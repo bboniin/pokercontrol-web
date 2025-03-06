@@ -1,0 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap');
+
+@font-face {
+    font-family: 'Barlow-Bold';
+    src: local('Barlow-Bold'), url(./fonts/Barlow-Bold.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'Barlow-Medium';
+    src: local('Barlow-Medium'), url(./fonts/Barlow-Medium.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'Barlow-Regular';
+    src: local('Barlow-Regular'), url(./fonts/Barlow-Regular.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'Barlow-SemiBold';
+    src: local('Barlow-SemiBold'), url(./fonts/Barlow-SemiBold.ttf) format('opentype');
+  }
+  
+@font-face {
+    font-family: 'BarlowCondensed-Bold';
+    src: local('BarlowCondensed-Bold'), url(./fonts/BarlowCondensed-Bold.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'BarlowCondensed-Medium';
+    src: local('BarlowCondensed-Medium'), url(./fonts/BarlowCondensed-Medium.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'BarlowCondensed-Regular';
+    src: local('BarlowCondensed-Regular'), url(./fonts/BarlowCondensed-Regular.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'BarlowCondensed-SemiBold';
+    src: local('BarlowCondensed-SemiBold'), url(./fonts/BarlowCondensed-SemiBold.ttf) format('opentype');
+  }
+  
+@font-face {
+    font-family: 'BarlowSemiCondensed-Bold';
+    src: local('BarlowSemiCondensed-Bold'), url(./fonts/BarlowSemiCondensed-Bold.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'BarlowSemiCondensed-Medium';
+    src: local('BarlowSemiCondensed-Medium'), url(./fonts/BarlowSemiCondensed-Medium.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'BarlowSemiCondensed-Regular';
+    src: local('BarlowSemiCondensed-Regular'), url(./fonts/BarlowSemiCondensed-Regular.ttf) format('opentype');
+  }
+  
+  @font-face {
+    font-family: 'BarlowSemiCondensed-SemiBold';
+    src: local('BarlowSemiCondensed-SemiBold'), url(./fonts/BarlowSemiCondensed-SemiBold.ttf) format('opentype');
+  }
+  
+  
