@@ -70,12 +70,12 @@ const Pedido = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -89,7 +89,7 @@ const Pedido = () => {
       let clientC = response.data.clients;
       clientC.map((item) => {
         item.label = item.name;
-        item.value = item.name;
+        item.value = item.id;
       });
       setClients(clientC);
       setClientsC(clientC);
@@ -98,7 +98,7 @@ const Pedido = () => {
 
   async function loadProducts() {
     setIsLoading(true);
-    await api.get("/products").then((response) => {
+    await api.get("/products?all=true").then((response) => {
       let productC = response.data.products;
       productC.map(async (item) => {
         item.label = item.name;
@@ -118,7 +118,7 @@ const Pedido = () => {
     setIsLoadingModal(true);
 
     let methods_transactionC = methods_transaction.filter(
-      (item) => item.id != "Crédito"
+      (item) => item.id != "Crédito",
     );
 
     const value = totalValue();
@@ -198,12 +198,12 @@ const Pedido = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -283,8 +283,8 @@ const Pedido = () => {
                   client.debt == client.receive
                     ? "#000"
                     : client.debt > client.receive
-                    ? "#d63211"
-                    : "#1eb019",
+                      ? "#d63211"
+                      : "#1eb019",
               }}
             >
               Saldo:{" "}
@@ -346,7 +346,7 @@ const Pedido = () => {
                         <td style={{ textAlign: "center", width: 125 }}>
                           {(product.value * product.total).toLocaleString(
                             "pt-br",
-                            { style: "currency", currency: "BRL" }
+                            { style: "currency", currency: "BRL" },
                           )}
                         </td>
                         <td
@@ -388,7 +388,7 @@ const Pedido = () => {
                                       setItems(
                                         items.filter((item) => {
                                           return item.id != product.id;
-                                        })
+                                        }),
                                       );
                                     },
                                     onCancel() {},
@@ -460,7 +460,7 @@ const Pedido = () => {
                         setMethods_transaction(
                           methods_transaction.filter((data, i) => {
                             return i != index;
-                          })
+                          }),
                         );
                       }}
                     />
@@ -542,7 +542,7 @@ const Pedido = () => {
                           .toUpperCase()
                           .indexOf(text.toUpperCase()) != -1
                       );
-                    })
+                    }),
                   );
                 }}
                 placeholder="procurar por nome"
@@ -624,7 +624,7 @@ const Pedido = () => {
                           .toUpperCase()
                           .indexOf(text.toUpperCase()) != -1
                       );
-                    })
+                    }),
                   );
                 }}
                 placeholder="procurar por nome"

@@ -26,11 +26,13 @@ export const Container = styled.div`
 
   .row {
     display: flex;
+    align-items: flex-start;
   }
 
   .drop-container {
     display: flex;
     flex-wrap: wrap;
+    align-items: flex-start;
   }
 
   .column-drop {
@@ -48,6 +50,23 @@ export const Container = styled.div`
   }
   ::-webkit-scrollbar {
     display: none;
+  }
+`;
+
+export const Transaction = styled.table`
+  width: 100%;
+  display: flex;
+  align-items: center;
+  border-bottom: 0.5px solid #ccc;
+  color: #001b22;
+
+  p {
+    flex: 1;
+    font-size: 12px;
+  }
+
+  div {
+    width: 50px;
   }
 `;
 

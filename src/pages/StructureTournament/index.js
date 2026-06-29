@@ -15,6 +15,7 @@ import { Button, Input, Select } from "antd";
 import { differenceInSeconds } from "date-fns";
 import Loader from "../../components/Loader";
 import { Textfit } from "react-textfit";
+import { MdDelete, MdPlayArrow } from "react-icons/md";
 
 const StructureTournament = () => {
   const { id } = useParams();
@@ -33,6 +34,7 @@ const StructureTournament = () => {
   const [nivel, setNivel] = useState(0);
   const [timerNivel, setTimerNivel] = useState(0);
   const [nextInterval, setNextInterval] = useState(0);
+  const [seconds_ajusted, setSeconds_ajusted] = useState(0);
   const [isInterval, setIsInterval] = useState(false);
   const [textNivel, setTextNivel] = useState("");
   const [timer, setTimer] = useState(0);
@@ -67,9 +69,9 @@ const StructureTournament = () => {
                   new Date(),
                   new Date(tournament.datetime_initial)
                 );
-            timer -= tournament.seconds_paused;
+            timer -= tournament.seconds_paused + seconds_ajusted;
             if (timer >= timerNivel || isInterval) {
-              timerCount(tournament, "");
+              timerCount(tournament, "", seconds_ajusted);
             }
             setTimer(timer);
           }, 250);
@@ -86,10 +88,10 @@ const StructureTournament = () => {
     }
   }, [tournament, timerNivel, intervals]);
 
-  function timerCount(tournament, intervals) {
+  function timerCount(tournament, intervals, seconds_ajusted) {
     let timer =
       differenceInSeconds(new Date(), new Date(tournament.datetime_initial)) -
-      tournament.seconds_paused;
+      (tournament.seconds_paused + seconds_ajusted);
     let timerC = 0;
     let intervalsC = 0;
     let nextInterval = 0;
@@ -158,12 +160,12 @@ const StructureTournament = () => {
 
   useEffect(() => {
     loadTimer(tournament, intervals);
-  }, [intervals, tournament]);
+  }, [intervals, tournament, seconds_ajusted]);
 
   async function loadTimer(tournament) {
     let timer =
       differenceInSeconds(new Date(), new Date(tournament.datetime_initial)) -
-      tournament.seconds_paused;
+      (tournament.seconds_paused + seconds_ajusted);
     let timerC = 0;
     let search = true;
     intervals.map((item, index) => {
@@ -173,7 +175,7 @@ const StructureTournament = () => {
         search = false;
       }
     });
-    timerCount(tournament, intervals);
+    timerCount(tournament, intervals, seconds_ajusted);
   }
 
   async function loadTournament() {
@@ -184,6 +186,7 @@ const StructureTournament = () => {
         setNivel_max_buyin_free(tournament.max_buyin_free);
         setNivel_max_in(tournament.max_in);
         setNivel_max_timechip(tournament.max_timechip);
+        setSeconds_ajusted(tournament.seconds_ajusted);
         let niveis = tournament.blinds.split("-");
         let intervals = tournament.intervals
           .split("-")
@@ -195,7 +198,8 @@ const StructureTournament = () => {
           differenceInSeconds(
             new Date(),
             new Date(tournament.datetime_initial)
-          ) - tournament.seconds_paused;
+          ) -
+          (tournament.seconds_paused + tournament.seconds_ajusted);
         let timerC = 0;
         let search = true;
         intervals.map((item, index) => {
@@ -210,7 +214,7 @@ const StructureTournament = () => {
         setIntervals(intervals);
         setTypesIntervals(typesIntervals);
 
-        timerCount(tournament, "");
+        timerCount(tournament, "", tournament.seconds_ajusted);
       })
       .catch(({ response }) => {
         if (response) {
@@ -273,6 +277,7 @@ const StructureTournament = () => {
           nivel_max_buyin_free: parseInt(nivel_max_buyin_free),
           nivel_max_in: parseInt(nivel_max_in),
           nivel_max_timechip: parseInt(nivel_max_timechip),
+          seconds_ajusted: seconds_ajusted,
         })
         .then((response) => {
           toast.success("Estrutura do torneio alterada com sucesso");
@@ -394,7 +399,7 @@ const StructureTournament = () => {
                       textAlign: "center",
                     }}
                   >
-                    (+{niveis[nivel]?.split("/")[1]})
+                    (+{niveis[nivel]?.split("/")[0]})
                   </Textfit>
                 </div>
                 {nivel + 1 < niveis.length && (
@@ -439,14 +444,19 @@ const StructureTournament = () => {
               >
                 <button
                   onClick={() => {
+                    let niveisIndex =
+                      index -
+                      typesIntervals.filter((item, i) => {
+                        return item == "I" && i <= index;
+                      }).length;
                     let typesIntervalsC = [...typesIntervals];
-                    typesIntervalsC.splice(index + 1, 0, "I");
+                    typesIntervalsC.splice(index + 1, 0, "N");
                     setTypesIntervals(typesIntervalsC);
                     let intervalsC = [...intervals];
                     intervalsC.splice(index + 1, 0, 15);
                     setIntervals(intervalsC);
                     let niveisC = [...niveis];
-                    niveisC.splice(index + 1, 0, "");
+                    niveisC.splice(niveisIndex + 1, 0, "");
                     setNiveis(niveisC);
                   }}
                   style={{
@@ -470,7 +480,7 @@ const StructureTournament = () => {
                     flexDirection: "column",
                   }}
                 >
-                  <p>
+                  <p style={{ fontSize: 12 }}>
                     Nível:{" "}
                     {index +
                       1 -
@@ -478,7 +488,8 @@ const StructureTournament = () => {
                         .slice(0, index + 1)
                         .filter((item) => item != "N").length}
                   </p>
-                  <p>Tempo: {index + 1}</p>
+
+                  <p style={{ fontSize: 10 }}>Tempo: {index + 1}</p>
                 </div>
 
                 <ViewInput
@@ -549,6 +560,65 @@ const StructureTournament = () => {
                     />
                   </ViewInput>
                 )}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: 55,
+                    marginLeft: 5,
+                    cursor: "pointer",
+                  }}
+                >
+                  <MdPlayArrow
+                    size={20}
+                    style={{ marginBottom: 5 }}
+                    onClick={() => {
+                      let timer =
+                        differenceInSeconds(
+                          new Date(),
+                          new Date(tournament.datetime_initial)
+                        ) - tournament.seconds_paused;
+                      let timerNivel = intervals
+                        .filter((data, i) => {
+                          return i < index;
+                        })
+                        .reduce((sum, item) => {
+                          return sum + item * 60;
+                        }, 0);
+                      let secondsAjusted = timerNivel
+                        ? timer - timerNivel
+                        : timer;
+                      setSeconds_ajusted(secondsAjusted);
+                    }}
+                  />
+                  <MdDelete
+                    size={18}
+                    onClick={() => {
+                      let niveisIndex =
+                        index -
+                        typesIntervals.filter((item, i) => {
+                          return item == "I" && i <= index;
+                        }).length;
+                      setIntervals(
+                        intervals.filter((item, i) => {
+                          return i != index;
+                        })
+                      );
+                      setNiveis(
+                        niveis.filter((item, i) => {
+                          return i != niveisIndex;
+                        })
+                      );
+                      setTypesIntervals(
+                        typesIntervals.filter((item, i) => {
+                          return i != index;
+                        })
+                      );
+                    }}
+                  />
+                </div>
               </ViewStructure>
             );
           })}

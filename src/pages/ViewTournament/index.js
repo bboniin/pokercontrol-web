@@ -7,8 +7,9 @@ import Loader from "../../components/Loader";
 import { getValue } from "../../services/functions";
 import { differenceInSeconds } from "date-fns";
 import { toast } from "react-toastify";
-import qrcode from "../../assets/qrcode.png";
-import video from "../../assets/video.mp4";
+import logoBlinds from "../../assets/logoBlinds.png";
+import stepschool from "../../assets/stepschool.mp4";
+import motion from "../../assets/motion.mp4";
 import { Textfit } from "react-textfit";
 
 const settings = {
@@ -24,9 +25,10 @@ const settings = {
   cssEase: "linear",
 };
 
-const ViewTournament = () => {
-  const { tournament_id } = useParams();
+const videos = [stepschool, stepschool, motion, stepschool, stepschool, motion];
 
+const ViewTournament = ({ index }) => {
+  const { tournament_id } = useParams();
   const [tournament, setTournament] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [activeSong, setActiveSong] = useState(false);
@@ -34,6 +36,7 @@ const ViewTournament = () => {
   const [nivel, setNivel] = useState(0);
   const [niveis, setNiveis] = useState([]);
   const [timerNivel, setTimerNivel] = useState(0);
+  const [videoIndex, setVideoIndex] = useState(0);
   const [nextInterval, setNextInterval] = useState(0);
   const [isInterval, setIsInterval] = useState(false);
   const [textNivel, setTextNivel] = useState("");
@@ -77,11 +80,12 @@ const ViewTournament = () => {
                   new Date(),
                   new Date(tournament.datetime_initial)
                 );
-            timer -= tournament.seconds_paused;
+            timer -= tournament.seconds_paused + tournament.seconds_ajusted;
             if (timerNivel - timer == 5 && nivelC == nivel && activeSong) {
               var audio = new Audio();
               audio.src = "/song.mp3";
               audio.play();
+              setVideoIndex(0);
               nivelC += 1;
             }
             if (timer >= timerNivel || isInterval) {
@@ -104,12 +108,11 @@ const ViewTournament = () => {
 
   async function loadTournament() {
     await api
-      .get(`/tournament/${tournament_id}`)
+      .get(`/tournament/${tournament_id}?blind=true`)
       .then((response) => {
         let tournament = response.data;
         setNiveis(tournament.niveis);
         setTournament(tournament);
-
         if (tournament.status == "aberto" || tournament.status == "criado") {
           setTextNivel("EM BREVE");
           setTimer(0);
@@ -142,7 +145,7 @@ const ViewTournament = () => {
   function timerCount(tournament) {
     let timer =
       differenceInSeconds(new Date(), new Date(tournament.datetime_initial)) -
-      tournament.seconds_paused;
+      (tournament.seconds_paused + tournament.seconds_ajusted);
     let timerC = 0;
     let intervals = 0;
     let nextInterval = 0;
@@ -194,6 +197,17 @@ const ViewTournament = () => {
     return dDisplay + hDisplay + mDisplay + sDisplay;
   }
 
+  function formatarMilhares(valorEmMilhares) {
+    if (valorEmMilhares >= 1000) {
+      return (valorEmMilhares / 1000).toFixed(1).replace(".0", "") + "M";
+    } else {
+      return valorEmMilhares
+        ? valorEmMilhares.toFixed(1).replace(".0", "") + "K"
+        : "0K";
+    }
+  }
+
+  console.log(nextInterval - timer);
   return (
     <Container>
       {!isLoading ? (
@@ -207,17 +221,28 @@ const ViewTournament = () => {
             <div>
               <h1>INTERVALO EM</h1>
               <span>
-                {tournamentEnd || !nextInterval
-                  ? secondsToDhms(0)
-                  : secondsToDhms(nextInterval - timer)}
+                {nextInterval - timer > 0
+                  ? tournamentEnd || !nextInterval
+                    ? secondsToDhms(0)
+                    : secondsToDhms(nextInterval - timer)
+                  : secondsToDhms(0)}
               </span>
             </div>
             <Line />
             <div>
               <h1>JOGADORES</h1>
               <span>
-                {tournament.clients.filter((item) => item.exit == false).length}
-                /{tournament.clients.length}
+                {
+                  tournament.clients.filter(
+                    (item) => !item.exit && item.chair_tournament
+                  ).length
+                }
+                /
+                {
+                  tournament.clients.filter(
+                    (item) => item.exit || (!item.exit && item.chair_tournament)
+                  ).length
+                }
               </span>
             </div>
           </div>
@@ -232,9 +257,7 @@ const ViewTournament = () => {
                 ATIVAR SOM
               </button>
             )}
-            <p className="award" onClick={() => {}}>
-              {tournament.name}
-            </p>
+            <img src={logoBlinds} className="award" />
             <div
               style={{
                 position: "relative",
@@ -245,8 +268,8 @@ const ViewTournament = () => {
                 fontFamily: "BarlowCondensed-Bold",
                 textAlign: "center",
                 maxHeight: "28vh",
-                color: " #ffffff",
-                "-webkit-text-stroke": "3px #20d071",
+                color: " #f8f8da",
+                "-webkit-text-stroke": "3px #f8981c",
               }}
             >
               <Textfit
@@ -303,12 +326,13 @@ const ViewTournament = () => {
                     min={10}
                     max={60}
                     style={{
+                      color: "#FFF",
                       width: "100%",
                       fontFamily: "BarlowCondensed-Bold",
                       textAlign: "center",
                     }}
                   >
-                    (+{niveis[nivel]?.split("/")[1]})
+                    ANTE: {niveis[nivel]?.split("/")[index]}
                   </Textfit>
                 </div>
                 {nivel + 1 < niveis.length && (
@@ -352,33 +376,36 @@ const ViewTournament = () => {
               <div className="shadow">
                 <p className="media">
                   MÉDIA{" "}
-                  {tournament.clients.filter((item) => item.exit == false)
-                    .length
-                    ? (
-                        tournament.total_tokens /
-                        1000 /
-                        tournament.clients.filter((item) => item.exit == false)
-                          .length
-                      )
-                        .toFixed(1)
-                        .replace(".0", "K")
-                    : "-"}
+                  {formatarMilhares(
+                    tournament.total_tokens /
+                      1000 /
+                      tournament.clients?.filter(
+                        (item) => !item.exit && item.chair_tournament
+                      ).length || 0
+                  )}{" "}
                   / CHIPCOUNT{" "}
-                  {(tournament.total_tokens / 1000)
-                    .toFixed(1)
-                    .replace(".0", "")}
-                  K
+                  {formatarMilhares(tournament.total_tokens / 1000 || 0)}
                 </p>
               </div>
               <div className="bottom">
                 <span>
-                  {tournament.purchases.map((item, idx) => {
-                    return `${idx ? " | " : ""}${item.name}: ${
-                      tournament.clients_purchases.filter(
-                        (data) => data.purchase_id == item.id
-                      ).length
-                    }`;
-                  })}
+                  {tournament.purchases
+                    .filter((data) => {
+                      return (
+                        data.type != "service" &&
+                        data.name != "VIP R$10" &&
+                        data.name != "VIP MENSAL"
+                      );
+                    })
+                    .map((item, idx) => {
+                      console.log(item.name);
+                      return `${idx ? " | " : ""}${item.name}: ${
+                        tournament.clients_purchases.filter(
+                          (data) =>
+                            data.purchase_id == item.id && data.name != "Staff"
+                        ).length
+                      }`;
+                    })}
                 </span>
               </div>
             </div>
@@ -506,6 +533,34 @@ const ViewTournament = () => {
             </>
           ) : (
             <div className="right" style={{ background: "transparent" }}></div>
+          )}
+
+          {videoIndex != 6 && (
+            <div
+              className="right"
+              style={{
+                background: "transparent",
+                justifyContent: "center",
+                position: "absolute",
+                right: 0,
+              }}
+            >
+              <video
+                key={videoIndex}
+                src={videos[videoIndex]}
+                muted
+                onEnded={() => {
+                  setVideoIndex(videoIndex + 1);
+                }}
+                autoPlay
+                controls=""
+                style={{
+                  width: "100%",
+                  maxHeight: "100vh",
+                  objectFit: "cover", // ou "cover", depende do que quiser
+                }}
+              ></video>
+            </div>
           )}
         </>
       ) : (

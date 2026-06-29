@@ -84,12 +84,12 @@ const Clients = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -113,12 +113,12 @@ const Clients = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -173,17 +173,17 @@ const Clients = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -235,17 +235,17 @@ const Clients = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -267,12 +267,12 @@ const Clients = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -293,7 +293,7 @@ const Clients = () => {
               setName("");
               setPhone_number("");
               setAddress("");
-              setCredit(500);
+              setCredit(50000);
               setPhoto("");
               setCpf("");
               setIsOpen(true);
@@ -324,7 +324,7 @@ const Clients = () => {
           setSearchName(text.target.value);
         }}
         onSearch={() => {
-          loadClients();
+          createClientes();
         }}
         value={searchName}
         loading={isLoading}
@@ -362,7 +362,7 @@ const Clients = () => {
                         {client.phone_number
                           ? client.phone_number.replace(
                               /(\d{2})(\d{5})(\d{4})/,
-                              "($1) $2-$3"
+                              "($1) $2-$3",
                             )
                           : "Não cadastrado"}
                       </td>
@@ -586,7 +586,7 @@ const Clients = () => {
             />
           </ViewInput>
           <ViewInput>
-            <p>Crédito ( Sugestão de R$ 500,00 )</p>
+            <p>Crédito ( Sugestão de R$ 50.000,00 )</p>
             <IntlCurrencyInput
               style={{
                 width: "100%",

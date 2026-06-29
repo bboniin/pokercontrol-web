@@ -1,5 +1,5 @@
 import styled, { css } from "styled-components";
-import fundo from "./../../assets/fundo.png";
+import fundo from "./../../assets/Background.png";
 
 export const Container = styled.div`
   height: 100vh;
@@ -16,17 +16,13 @@ export const Container = styled.div`
 
   .award {
     font-family: "Barlow-Bold";
-    color: #20d071;
-    -webkit-text-stroke: 2px #20d071;
-    font-size: 4.35vw;
-    line-height: 4.35vw;
-    text-align: left;
-  }
+    height: 5.35vw;
+  } 
 
   .timer {
     font-family: "BarlowSemiCondensed-Bold";
-    color: #fff;
-    -webkit-text-stroke: 3px #20d071;
+    color: #f8f8da;
+    -webkit-text-stroke: 3px #f8981c;
     font-size: 13.6vw;
     line-height: 13.6vw;
     text-align: left;
@@ -35,11 +31,12 @@ export const Container = styled.div`
 
   .media {
     font-family: "BarlowSemiCondensed-Bold";
-    color: #20d071;
-    -webkit-text-stroke: 2px #20d071;
+    color: #000;
+    -webkit-text-stroke: 2px #000;
     font-size: 3.15vw;
     line-height: 3.2vw;
     text-align: left;
+    background-color: #f8981c;
   }
 
   .chipcount {
@@ -60,15 +57,15 @@ export const Container = styled.div`
 
     p {
       font-family: "Barlow-Bold";
-      color: #20d071;
+      color: #f8f8da;
       font-size: 3.4vw;
-      -webkit-text-stroke: 2px #20d071;
+      -webkit-text-stroke: 2px #f8981c;
       margin: 5px 0 10px 0 !important;
       text-align: left;
     }
   }
 
-  .interval {
+  .interval {nivelatual
     position: absolute;
     background: #000b;
     flex-direction: column;
@@ -117,23 +114,25 @@ export const Container = styled.div`
     flex-direction: column;
     align-items: center;
     margin: 0 10px;
-    background: #b1b2b539;
+    background: #000;
     padding: 15px;
-    color: #20d071;
-    -webkit-text-stroke: 1px #20d071;
-    border-radius: 15px;
+    color: #f8981c;
+    border-color: #f8981c;
+    border-style: solid;
+    border-bottom-left-radius: 35PX;
+    border-TOP-right-radius: 35PX;
 
     p {
       font-family: "BarlowCondensed-Bold";
       color: #fff;
-      font-size: 2.1vw;
+      font-size: 3.1vw;
       -webkit-text-stroke: 1px #fff;
       text-align: center;
     }
     span {
       font-family: "BarlowCondensed-Bold";
-      color: #20d071;
-      -webkit-text-stroke: 1px #20d071;
+      color: #f8981c;
+      -webkit-text-stroke: 1px #f8981c;
       margin-top: 5px !important;
       text-align: center;
     }
@@ -144,11 +143,13 @@ export const Container = styled.div`
     flex-direction: column;
     align-items: center;
     margin: 0 10px;
-    background: #b1b2b539;
+    background: #000;
     padding: 15px;
-    color: #20d071;
-    -webkit-text-stroke: 1px #20d071;
-    border-radius: 15px;
+    color: #f8981c;
+    border-color: #f8981c;
+    border-style: solid;
+    border-top-left-radius: 35PX;
+    border-bottom-right-radius: 35PX;
 
     p {
       font-family: "BarlowCondensed-Bold";
@@ -159,8 +160,8 @@ export const Container = styled.div`
     }
     span {
       font-family: "BarlowCondensed-Bold";
-      color: #20d071;
-      -webkit-text-stroke: 1px #20d071;
+      color: #f8981c;
+      -webkit-text-stroke: 1px #f8981c;
       margin-top: 5px !important;
       text-align: center;
     }
@@ -169,7 +170,7 @@ export const Container = styled.div`
   .activeSong {
     position: absolute;
     top: 0;
-    background: #20d071;
+    background: #f8981c;
     color: #fff;
     padding: 8px;
     font-size: 16px;
@@ -181,7 +182,7 @@ export const Container = styled.div`
   .left {
     display: flex;
     flex-direction: column;
-    background: #b1b2b539;
+    background: #f8981c;
     justify-content: space-between;
     height: 100%;
     width: 18%;
@@ -194,13 +195,15 @@ export const Container = styled.div`
         font-size: 1.8vw;
         line-height: 1.8vw;
         text-align: left;
+        color: #000;
       }
 
       span {
         font-family: "BarlowCondensed-Bold";
-        font-size: 3.15vw;
-        line-height: 2.9vw;
+        font-size: 3.85vw;
+        line-height: 3.5vw;
         text-align: left;
+        color: #000;
       }
 
       flex: 1;
@@ -227,7 +230,7 @@ export const Container = styled.div`
   .right {
     display: flex;
     flex-direction: column;
-    background: #b1b2b539;
+    background: #f8981c;
     align-items: flex-end;
     justify-content: space-between;
     min-height: 100%;
@@ -236,6 +239,7 @@ export const Container = styled.div`
     border-top-left-radius: 25px;
     border-bottom-left-radius: 25px;
     overflow: auto;
+    color: #000;
   }
 
   .divPubli {
@@ -281,28 +285,31 @@ export const Container = styled.div`
   }
 
   .shadow {
-    background: #b1b2b539;
+    background-color: #f8981c;
     padding: 15px 25px;
     border-top-left-radius: 25px;
     border-top-right-radius: 25px;
     margin: 20px 0 0px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
   }
 
   .bottom {
     display: flex;
-    padding: 5px 20px;
+    padding: 5px 10px;
     flex-direction: column;
     width: 100%;
-    background: #b1b2b539;
-    border-top-left-radius: 25px;
-    border-top-right-radius: 25px;
+    background: #f8981c;
 
     span {
       width: 100%;
       font-family: "BarlowCondensed-Medium";
-      font-size: 1.95vw;
+      font-size: 1.90vw;
       line-height: 1.82vw;
       text-align: center;
+      color: #000;
     }
   }
 
@@ -322,5 +329,5 @@ export const Line = styled.div`
   min-height: 2px;
   max-height: 2px;
   flex: 1;
-  background: #20d071;
+  background: #000;
 `;

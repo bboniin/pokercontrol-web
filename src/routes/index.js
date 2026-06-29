@@ -28,6 +28,16 @@ import Rankings from "../pages/Rankings";
 import Ranking from "../pages/Ranking";
 import Vagas from "../pages/Vagas";
 import GrupoVagas from "../pages/GrupoVagas";
+import Banks from "../pages/Banks";
+import Payable from "../pages/Payable";
+import Caixa from "../pages/Caixa";
+import CaixasFechados from "../pages/CaixasFechados";
+import ViewTournamentOk from "../pages/ViewTournamentOk";
+import ViewTournamentOG from "../pages/ViewTournamentOG";
+import ViewTournamentGG from "../pages/ViewTournamentGG";
+import ViewTournamentBF from "../pages/ViewTournamentBR";
+import ViewTournamentBR from "../pages/ViewTournamentBR";
+import ViewTournamentCP from "../pages/ViewTournamentCP";
 
 const Router = () => (
   <Routes>
@@ -46,6 +56,12 @@ const Router = () => (
     <Route exact path="/bar" element={<PrivateRoute />}>
       <Route exact path="/bar" element={<Bar />} />
     </Route>
+    <Route exact path="/contas" element={<PrivateRoute />}>
+      <Route exact path="/contas" element={<Banks />} />
+    </Route>
+    <Route exact path="/despesas" element={<PrivateRoute />}>
+      <Route exact path="/despesas" element={<Payable />} />
+    </Route>
     <Route exact path="/bar/pedido" element={<PrivateRoute />}>
       <Route exact path="/bar/pedido" element={<Pedido />} />
     </Route>
@@ -60,13 +76,134 @@ const Router = () => (
     </Route>
     <Route
       exact
+      path="/view-torneio-blu/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-torneio-blu/:tournament_id"
+        element={<ViewTournament index={0} />}
+      />
+    </Route>
+    <Route
+      exact
       path="/view-torneio/:tournament_id"
       element={<PrivateRouteClear />}
     >
       <Route
         exact
         path="/view-torneio/:tournament_id"
-        element={<ViewTournament />}
+        element={<ViewTournamentOk index={0} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-torneio-og/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-torneio-og/:tournament_id"
+        element={<ViewTournamentOG index={0} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-torneio-gg/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-torneio-gg/:tournament_id"
+        element={<ViewTournamentGG index={0} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-torneio-br/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-torneio-br/:tournament_id"
+        element={<ViewTournamentBR index={0} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-torneio-cp/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-torneio-cp/:tournament_id"
+        element={<ViewTournamentCP index={0} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-tournament-blu/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-tournament-blu/:tournament_id"
+        element={<ViewTournament index={1} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-tournament/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-tournament/:tournament_id"
+        element={<ViewTournamentOk index={1} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-tournament-og/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-tournament-og/:tournament_id"
+        element={<ViewTournamentOG index={1} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-tournament-gg/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-tournament-gg/:tournament_id"
+        element={<ViewTournamentGG index={1} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-tournament-br/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-tournament-br/:tournament_id"
+        element={<ViewTournamentBR index={1} />}
+      />
+    </Route>
+    <Route
+      exact
+      path="/view-tournament-cp/:tournament_id"
+      element={<PrivateRouteClear />}
+    >
+      <Route
+        exact
+        path="/view-tournament-cp/:tournament_id"
+        element={<ViewTournamentCP index={1} />}
       />
     </Route>
     <Route exact path="/novo-torneio" element={<PrivateRoute />}>
@@ -114,6 +251,12 @@ const Router = () => (
     </Route>
     <Route exact path="/client/:id" element={<PrivateRoute />}>
       <Route exact path="/client/:id" element={<Client />} />
+    </Route>
+    <Route exact path="/caixa" element={<PrivateRoute />}>
+      <Route exact path="/caixa" element={<Caixa />} />
+    </Route>
+    <Route exact path="/caixas" element={<PrivateRoute />}>
+      <Route exact path="/caixas" element={<CaixasFechados />} />
     </Route>
   </Routes>
 );

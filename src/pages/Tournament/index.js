@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   MdAccountCircle,
   MdAdd,
@@ -11,8 +11,9 @@ import {
   MdRefresh,
   MdPause,
   MdCancel,
+  MdVisibility,
+  MdKeyboardReturn,
 } from "react-icons/md";
-import { BiSolidMinusCircle, BiSolidPlusCircle } from "react-icons/bi";
 import { useNavigate, useParams } from "react-router-dom";
 
 import api from "../../services/api";
@@ -25,10 +26,10 @@ import {
   Payments,
   ClientChair,
   InfosTournament,
-  Amount,
   ViewAward,
   Table,
   Row,
+  Transaction,
 } from "./styles";
 import Loader from "../../components/Loader";
 import { toast } from "react-toastify";
@@ -40,6 +41,7 @@ import {
   Select,
   Switch,
   Tooltip,
+  Checkbox,
 } from "antd";
 import { ExclamationCircleFilled } from "@ant-design/icons";
 import { getValue } from "../../services/functions";
@@ -47,6 +49,9 @@ import { differenceInSeconds, format } from "date-fns";
 import IntlCurrencyInput from "react-intl-currency-input";
 import MethodsPayment from "../../components/MethodsPayment";
 import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
+import logo from "../../assets/logo.png";
+import { useReactToPrint } from "react-to-print";
+import { TablePrint } from "../ViewComanda/styles";
 
 const currencyConfig = {
   locale: "pt-BR",
@@ -75,12 +80,19 @@ const getItemStyle = (isDragging, draggableStyle) => ({
 const Tournament = () => {
   const navigate = useNavigate();
 
-  const { tournament_id } = useParams();
+  const componentRef = useRef();
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+  });
 
+  const { tournament_id } = useParams();
   const [clients, setClients] = useState([]);
   const [clientsTournament, setClientsTournament] = useState([]);
+  const [clientsTournamentWait, setClientsTournamentWait] = useState([]);
+  const [clientsTournamentExit, setClientsTournamentExit] = useState([]);
   const [clientsC, setClientsC] = useState([]);
   const [clientsTournamentC, setClientsTournamentC] = useState([]);
+  const [clientsAll, setClientsAll] = useState([]);
   const [client, setClient] = useState("");
   const [i, setI] = useState(0);
   const [p, setP] = useState(0);
@@ -102,10 +114,15 @@ const Tournament = () => {
   const [searchClient, setSearchClient] = useState("");
   const [id, setId] = useState("");
   const [award, setAward] = useState([]);
+  const [awardEdit, setAwardEdit] = useState([]);
   const [purchases, setPurchases] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [transactionsCanceled, setTransactionsCanceled] = useState([]);
+  const [command, setCommand] = useState({});
   const [methods_transaction, setMethods_transaction] = useState([]);
   const [playresAward, setPlayresAward] = useState("");
   const [staff, setStaff] = useState("");
+  const [typeChair, setTypeChair] = useState("");
   const [observation, setObservation] = useState("");
   const [datePayment, setDatePayment] = useState(new Date());
   const [isLoadingModal, setIsLoadingModal] = useState(false);
@@ -113,6 +130,22 @@ const Tournament = () => {
   const [timerTimechip, setTimerTimechip] = useState(false);
   const [isOpenFinishAdd, setIsOpenFinishAdd] = useState(false);
   const [isOpenClient, setIsOpenClient] = useState(false);
+  const [visibleWait, setVisibleWait] = useState(false);
+  const [visibleExit, setVisibleExit] = useState(false);
+  const [isOpenPurchases, setIsOpenPurchases] = useState(false);
+  const [purchasesModal, setPurchasesModal] = useState([]);
+  const [isOpenNewPurchase, setIsOpenNewPurchase] = useState(false);
+  const [namePurchase, setNamePurchase] = useState("");
+  const [tokenPurchase, setTokenPurchase] = useState("");
+  const [typePurchase, setTypePurchase] = useState("");
+  const [valuePurchase, setValuePurchase] = useState(0);
+  const [isStaff, setIsStaff] = useState(false);
+  const [cashierPurchase, setCashierPurchase] = useState("");
+  const [staffValue, setStaffValue] = useState(0);
+  const [staffToken, setStaffToken] = useState(0);
+  const [errorModal, setErrorModal] = useState(false);
+  const [isOpenCanceled, setIsOpenCanceled] = useState(false);
+  const [isOpenCommand, setIsOpenCommand] = useState(false);
   const [isOpenAward, setIsOpenAward] = useState(false);
 
   const [tournamentEnd, setTournamentEnd] = useState(false);
@@ -128,6 +161,13 @@ const Tournament = () => {
     loadChairs();
     loadClients();
     setIsLoading(false);
+    const interval = setInterval(() => {
+      loadChairs();
+      loadClients();
+      setIsLoading(false);
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
   async function loadMethods() {
@@ -149,12 +189,12 @@ const Tournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -177,13 +217,13 @@ const Tournament = () => {
         let timer = tournament.paused
           ? differenceInSeconds(
               new Date(tournament.time_paused),
-              new Date(tournament.datetime_initial)
+              new Date(tournament.datetime_initial),
             )
           : differenceInSeconds(
               new Date(),
-              new Date(tournament.datetime_initial)
+              new Date(tournament.datetime_initial),
             );
-        timer -= tournament.seconds_paused;
+        timer -= tournament.seconds_paused + tournament.seconds_ajusted;
         if (timer >= timerNivel || isInterval) {
           timerCount(tournament);
         }
@@ -202,7 +242,7 @@ const Tournament = () => {
   function timerCount(tournament) {
     let timer =
       differenceInSeconds(new Date(), new Date(tournament.datetime_initial)) -
-      tournament.seconds_paused;
+      (tournament.seconds_paused + tournament.seconds_ajusted);
     let timerC = 0;
     let intervals = 0;
     let search = true;
@@ -237,12 +277,14 @@ const Tournament = () => {
       .get(`/tournament/${tournament_id}`)
       .then((response) => {
         tournament = response.data;
+
         if (tournament.award) {
           setAward(
-            tournament.award.split("-").map((item) => (item = parseFloat(item)))
+            tournament.award
+              .split("-")
+              .map((item) => (item = parseFloat(item))),
           );
         }
-
         let clientC = tournament.clients;
         clientC.map((item) => {
           item.label = item.client.name;
@@ -272,12 +314,12 @@ const Tournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -294,6 +336,8 @@ const Tournament = () => {
         .get(`/clients-tournament/${tournament.id}`)
         .then((response) => {
           let clientsTournament = [];
+          let clientsTournamentWait = [];
+          let clientsTournamentExit = [];
           response.data.map((item) => {
             if (item.chair) {
               clientsTournament.push(item);
@@ -302,10 +346,18 @@ const Tournament = () => {
               item.value = item.id;
               item.label = `${item.name} (Mesa ${i} - Posição ${p})`;
               chairs[i - 1].chairs[p - 1] = item;
+            } else {
+              if (!item.client_tournaments[0].exit) {
+                clientsTournamentWait.push(item);
+              } else {
+                clientsTournamentExit.push(item);
+              }
             }
           });
           setClientsTournament(clientsTournament);
           setClientsTournamentC(clientsTournament);
+          setClientsTournamentWait(clientsTournamentWait);
+          setClientsTournamentExit(clientsTournamentExit);
           setChairs([...chairs]);
         })
         .catch(({ response }) => {
@@ -315,17 +367,17 @@ const Tournament = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -351,12 +403,41 @@ const Tournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
+            );
+          }
+        } else {
+          toast.error("Erro Interno. verifique sua conexão e tente novamente");
+        }
+      });
+  }
+
+  async function loadTransactions() {
+    await api
+      .get(`/transactions/tournament/${tournament_id}?client_id=${client.id}`)
+      .then((response) => {
+        setTransactions(response.data);
+        setTransactionsCanceled([]);
+        setIsOpenCanceled(true);
+      })
+      .catch(({ response }) => {
+        if (response) {
+          if (response.data) {
+            if (response.data.message) {
+              toast.warn(response.data.message);
+            } else {
+              toast.error(
+                "Erro Interno. verifique sua conexão e tente novamente",
+              );
+            }
+          } else {
+            toast.error(
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -367,11 +448,11 @@ const Tournament = () => {
 
   async function finishAdd() {
     setIsLoadingModal(true);
-    if (award.length == 0 || award.some((item) => !item)) {
+    if (awardEdit.length == 0 || awardEdit.some((item) => !item)) {
       toast.warning("Gere e preencha o modelo de recompensa");
     } else {
       let awardString = "";
-      award.map((item) => {
+      awardEdit.map((item) => {
         awardString = awardString + item + "-";
       });
       awardString = awardString.slice(0, -1);
@@ -381,7 +462,7 @@ const Tournament = () => {
           staff: staff,
         })
         .then((response) => {
-          setTournament(response.data);
+          loadChairs();
           setIsOpenFinishAdd(false);
           toast.success("Inscrições do torneio finalizadas com sucesso");
         })
@@ -392,17 +473,17 @@ const Tournament = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -419,14 +500,22 @@ const Tournament = () => {
         return "";
       }
     } else {
-      if (!client || !chair || !position) {
+      if (!purchases.length) {
+        toast.warn("Adicione pelo menos uma compra");
+        setIsLoadingModal(false);
+        return "";
+      }
+      if (!client || (typeChair == "mesa" && (!chair || !position))) {
         toast.warn(
-          "Selecione o cliente, mesa e posição na mesa para adicionar ao Torneio"
+          "Selecione o cliente, mesa e posição na mesa para adicionar ao Torneio",
         );
         setIsLoadingModal(false);
         return "";
       } else {
-        if (!purchases.some((item) => item.type == "entrie")) {
+        if (
+          client?.client_tournaments?.length == 0 &&
+          !purchases.some((item) => item.type == "entrie")
+        ) {
           toast.warn("Entrada é obrigátoria");
           setIsLoadingModal(false);
           return "";
@@ -435,7 +524,7 @@ const Tournament = () => {
     }
 
     let methods_transactionC = methods_transaction.filter(
-      (item) => item.id != "Crédito"
+      (item) => item.id != "Crédito",
     );
 
     if (methods_transactionC.length) {
@@ -498,7 +587,7 @@ const Tournament = () => {
       .post(`/${id ? "buy" : "add"}-tournament`, {
         id: client.id,
         client_id: client.id,
-        chair: `${chair}-${position}`,
+        chair: chair && position ? `${chair}-${position}` : "",
         tournament_id: tournament.id,
         methods_transaction: methods_transactionC,
         timechip: timechip,
@@ -513,9 +602,34 @@ const Tournament = () => {
         } else {
           toast.success("Cliente adicionado com sucesso");
         }
+
+        setCommand({
+          purchases,
+          staff: {
+            value:
+              purchases
+                .filter((item) => item.buy_staff)
+                .reduce((sum, item) => {
+                  return sum + item.value_staff;
+                }, 0) || 0,
+            token:
+              purchases
+                .filter((item) => item.buy_staff)
+                .reduce((sum, item) => {
+                  return sum + item.token_staff;
+                }, 0) || 0,
+          },
+          methods_transaction: methods_transactionC,
+          client,
+          chair:
+            !chair || !position
+              ? "Lista de espera"
+              : `Mesa ${chair} Posição ${position}`,
+        });
         loadClients();
         loadChairs();
         setIsOpen(false);
+        setIsOpenCommand(true);
       })
       .catch(({ response }) => {
         if (response) {
@@ -524,12 +638,12 @@ const Tournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -544,7 +658,7 @@ const Tournament = () => {
     setIsLoadingModal(true);
 
     let methods_transactionC = methods_transaction.filter(
-      (item) => item.id != "Crédito"
+      (item) => item.id != "Crédito",
     );
 
     if (award[positionAward - 1] && tournament.status == "final") {
@@ -615,13 +729,8 @@ const Tournament = () => {
       })
       .then((response) => {
         toast.success("Cliente removido do Torneio com sucesso");
-        let chairC = [...chairs];
-        chairC[i].chairs[p] = {
-          label: `Posição ${p + 1}`,
-          value: p + 1,
-        };
         setTournament(response.data);
-        setChairs(chairC);
+        loadChairs();
         setIsOpenAward(false);
         loadClients();
       })
@@ -632,12 +741,12 @@ const Tournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -647,22 +756,22 @@ const Tournament = () => {
     setIsLoadingModal(false);
   }
 
-  async function canceledClient(client, i, p) {
+  async function returnClient(client) {
     setIsLoadingModal(true);
+
     await api
-      .put(`canceled-client/${client.id}`, {
+      .put(`return-client`, {
         tournament_id: tournament.id,
+        client_id: client.id,
       })
       .then((response) => {
-        toast.success("Cliente removido e compras canceladas com sucesso");
-        let chairC = [...chairs];
-        chairC[i].chairs[p] = {
-          label: `Posição ${p + 1}`,
-          value: p + 1,
-        };
-        setTournament(response.data);
-        setChairs(chairC);
-        loadClients();
+        if (clientsTournamentExit.length == 1) {
+          setVisibleExit(false);
+        }
+        toast.success(
+          "Cliente retornou para lista de espera do Torneio com sucesso",
+        );
+        loadChairs();
       })
       .catch(({ response }) => {
         if (response) {
@@ -671,12 +780,106 @@ const Tournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
+            );
+          }
+        } else {
+          toast.error("Erro Interno. verifique sua conexão e tente novamente");
+        }
+      });
+    setIsLoadingModal(false);
+  }
+
+  async function addPurchase() {
+    if (
+      !namePurchase ||
+      !cashierPurchase ||
+      (typePurchase != "service" && !tokenPurchase) ||
+      (isStaff && !staffToken)
+    ) {
+      setErrorModal(true);
+      toast.warn("Preencha todos os campos para salvar");
+    } else {
+      setIsLoadingModal(true);
+      await api
+        .post(`new-purchase/${tournament.id}`, {
+          name: namePurchase,
+          cashier: cashierPurchase,
+          value: valuePurchase,
+          type: typePurchase,
+          token: parseInt(tokenPurchase),
+          is_staff: isStaff,
+          token_staff: staffToken,
+          value_staff: staffValue,
+        })
+        .then((response) => {
+          loadChairs();
+          toast.success("Nova compra adicionada ao torneio com sucesso");
+          setIsOpenNewPurchase(false);
+        })
+        .catch(({ response }) => {
+          if (response) {
+            if (response.data) {
+              if (response.data.message) {
+                toast.warn(response.data.message);
+              } else {
+                toast.error(
+                  "Erro Interno. verifique sua conexão e tente novamente",
+                );
+              }
+            } else {
+              toast.error(
+                "Erro Interno. verifique sua conexão e tente novamente",
+              );
+            }
+          } else {
+            toast.error(
+              "Erro Interno. verifique sua conexão e tente novamente",
+            );
+          }
+        });
+      setIsLoadingModal(false);
+    }
+  }
+
+  async function canceledClient(client, i, p) {
+    setIsLoadingModal(true);
+    let transactionsSend = transactionsCanceled.map((item) => item.id);
+    await api
+      .put(`canceled-client/${client.id}`, {
+        tournament_id: tournament.id,
+        transactions: transactionsSend,
+      })
+      .then((response) => {
+        if (transactions.length == transactionsCanceled.length) {
+          toast.success(
+            "Cliente removido e todas compras canceladas com sucesso",
+          );
+        } else {
+          toast.success(
+            "Compras selecionadas foram canceladas excluidas com sucesso",
+          );
+        }
+        loadChairs();
+      })
+      .catch(({ response }) => {
+        if (response) {
+          if (response.data) {
+            if (response.data.message) {
+              toast.warn(response.data.message);
+            } else {
+              toast.error(
+                "Erro Interno. verifique sua conexão e tente novamente",
+              );
+            }
+          } else {
+            toast.error(
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -699,12 +902,12 @@ const Tournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -733,17 +936,17 @@ const Tournament = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -817,9 +1020,9 @@ const Tournament = () => {
                   if (
                     differenceInSeconds(
                       new Date(),
-                      new Date(tournament.datetime_max_in)
+                      new Date(tournament.datetime_max_in),
                     ) -
-                      tournament.seconds_paused >
+                      (tournament.seconds_paused + tournament.seconds_ajusted) >
                       0 &&
                     tournament.status == "inscricao"
                   ) {
@@ -829,17 +1032,20 @@ const Tournament = () => {
                     setClient("");
                     setChair("");
                     setPosition("");
+                    setTypeChair("");
                     setTimechip(false);
                     setValue(0);
+                    setClients(clientsC);
                     if (tournament.status == "aberto") {
                       setTimerTimechip(true);
                     } else {
                       if (
                         differenceInSeconds(
                           new Date(),
-                          new Date(tournament.datetime_max_timechip)
+                          new Date(tournament.datetime_max_timechip),
                         ) -
-                          tournament.seconds_paused >
+                          (tournament.seconds_paused +
+                            tournament.seconds_ajusted) >
                         0
                       ) {
                         setTimerTimechip(false);
@@ -862,6 +1068,13 @@ const Tournament = () => {
             <Button
               type="primary"
               onClick={() => {
+                if (tournament.award) {
+                  setAwardEdit(
+                    tournament.award
+                      .split("-")
+                      .map((item) => (item = parseFloat(item))),
+                  );
+                }
                 setIsOpenFinishAdd(true);
               }}
             >
@@ -888,31 +1101,139 @@ const Tournament = () => {
               <div className="infos">
                 <p>Fichas: {parseInt(tournament.total_tokens / 1000)}K</p>
                 {tournament?.purchases.map((item) => {
-                  if (item.type != "service") {
-                    return (
-                      <>
-                        <p>
-                          {item.name}: {getValue(item.value)} / {item.token}{" "}
-                          Fichas
-                        </p>
-                        {item.is_staff && (
-                          <p>
-                            Staff: {getValue(item.value_staff)} /{" "}
-                            {item.token_staff} Fichas
-                          </p>
+                  return (
+                    <>
+                      <p
+                        style={{
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        {item.name}: {getValue(item.value)} /{" "}
+                        {item.type == "service"
+                          ? "Serviço / "
+                          : `${item.token} Fichas / `}
+                        {
+                          tournament?.clients_purchases.filter(
+                            (data) =>
+                              data.purchase_id == item.id &&
+                              data.type != "staff",
+                          ).length
+                        }
+                        x{"  "}
+                        {!!tournament?.clients_purchases.filter(
+                          (data) =>
+                            data.purchase_id == item.id && data.type != "staff",
+                        ).length && (
+                          <MdVisibility
+                            size={20}
+                            style={{ marginLeft: 8 }}
+                            onClick={() => {
+                              setNamePurchase(item.name);
+                              setValuePurchase(item.value);
+                              setTokenPurchase(item.token);
+                              setTypePurchase(item.type);
+                              setClientsAll([
+                                ...clientsTournamentC,
+                                ...clientsTournamentWait,
+                              ]);
+                              setPurchasesModal(
+                                tournament?.clients_purchases.filter(
+                                  (data) =>
+                                    data.purchase_id == item.id &&
+                                    data.type != "staff",
+                                ),
+                              );
+                              setIsOpenPurchases(true);
+                            }}
+                          />
                         )}
-                      </>
-                    );
-                  }
+                      </p>
+                      {item.is_staff && (
+                        <p
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          Staff: {getValue(item.value_staff)} /{" "}
+                          {item.token_staff} Fichas{" / "}
+                          {
+                            tournament?.clients_purchases.filter(
+                              (data) =>
+                                data.purchase_id == item.id &&
+                                data.type == "staff",
+                            ).length
+                          }
+                          x{"  "}
+                          {!!tournament?.clients_purchases.filter(
+                            (data) =>
+                              data.purchase_id == item.id &&
+                              data.type == "staff",
+                          ).length && (
+                            <MdVisibility
+                              size={20}
+                              style={{ marginLeft: 8 }}
+                              onClick={() => {
+                                setNamePurchase(item.name);
+                                setValuePurchase(item.value);
+                                setTokenPurchase(item.token);
+                                setTypePurchase(item.type);
+                                setClientsAll([
+                                  ...clientsTournamentC,
+                                  ...clientsTournamentWait,
+                                ]);
+                                setPurchasesModal(
+                                  tournament?.clients_purchases.filter(
+                                    (data) =>
+                                      data.purchase_id == item.id &&
+                                      data.type == "staff",
+                                  ),
+                                );
+                                setIsOpenPurchases(true);
+                              }}
+                            />
+                          )}
+                        </p>
+                      )}
+                    </>
+                  );
                 })}
+                {
+                  <Button
+                    type="primary"
+                    onClick={() => {
+                      setNamePurchase("");
+                      setCashierPurchase("clube");
+                      setValuePurchase("");
+                      setTokenPurchase("");
+                      setIsStaff(false);
+                      setPosition(0);
+                      setTypePurchase("");
+                      setErrorModal(false);
+                      setIsOpenNewPurchase(true);
+                    }}
+                    style={{
+                      fontSize: 12,
+                      height: 25,
+                      justifySelf: "center",
+                    }}
+                  >
+                    <span>Nova Compra</span>
+                  </Button>
+                }
               </div>
               {(tournament.status == "inscricao" ||
                 tournament.status == "final") && (
                 <div className="infos">
-                  <p>
-                    Premiação Garantida:{" "}
-                    {getValue(tournament.totalAward_guaranteed)}
-                  </p>
+                  {!!tournament.totalAward_guaranteed && (
+                    <p>
+                      Premiação Garantida:{" "}
+                      {getValue(tournament.totalAward_guaranteed)}
+                    </p>
+                  )}
                   <p>
                     Premiação Acumulada:{" "}
                     {getValue(tournament.totalAward_accumulated)}
@@ -929,7 +1250,7 @@ const Tournament = () => {
                     Inicio do Torneio:{" "}
                     {format(
                       new Date(tournament.datetime_initial),
-                      "dd/MM/yyyy HH:mm"
+                      "dd/MM/yyyy HH:mm",
                     )}
                   </p>
                   <p>
@@ -937,14 +1258,14 @@ const Tournament = () => {
                     {tournamentEnd
                       ? "Encerradas"
                       : isInterval
-                      ? "Intervalo"
-                      : `Nivel ${nivel + 1}`}
+                        ? "Intervalo"
+                        : `Nivel ${nivel + 1}`}
                   </p>
                   <p>
                     Inscrições até{" "}
                     {format(
                       new Date(tournament.datetime_max_in),
-                      "dd/MM/yyyy HH:mm:ss"
+                      "dd/MM/yyyy HH:mm:ss",
                     )}
                   </p>
                 </div>
@@ -952,10 +1273,12 @@ const Tournament = () => {
 
               {tournament.status == "encerrado" && (
                 <div className="infos">
-                  <p>
-                    Premiação Garantida:{" "}
-                    {getValue(tournament.totalAward_guaranteed)}
-                  </p>
+                  {!!tournament.totalAward_guaranteed && (
+                    <p>
+                      Premiação Garantida:{" "}
+                      {getValue(tournament.totalAward_guaranteed)}
+                    </p>
+                  )}
                   <p>
                     Premiação Acumulada:{" "}
                     {getValue(tournament.totalAward_accumulated)}
@@ -966,8 +1289,8 @@ const Tournament = () => {
                       {getValue(
                         tournament.vacancys.reduce(
                           (acumulador, item) => acumulador + item.value,
-                          0
-                        )
+                          0,
+                        ),
                       )}
                     </p>
                   )}
@@ -975,10 +1298,17 @@ const Tournament = () => {
                     <p>
                       Premiação Ranking{" "}
                       {getValue(
-                        tournament.rankings.reduce(
-                          (acumulador, item) => acumulador + item.value,
-                          0
-                        )
+                        tournament.rankings.reduce((acumulador, item) => {
+                          if (item.type == "value") {
+                            return acumulador + item.value;
+                          } else {
+                            return (
+                              acumulador +
+                              tournament.totalAward_accumulated *
+                                (item.percentage / 100)
+                            );
+                          }
+                        }, 0),
                       )}
                     </p>
                   )}
@@ -988,7 +1318,7 @@ const Tournament = () => {
                       tournament.totalAward_guaranteed >
                         tournament.totalAward_accumulated - tournament.staff
                         ? tournament.totalAward_guaranteed
-                        : tournament.totalAward_accumulated - tournament.staff
+                        : tournament.totalAward_accumulated - tournament.staff,
                     )}
                   </p>
                   <p>Rake da casa: {getValue(tournament.staff)}</p>
@@ -1064,17 +1394,17 @@ const Tournament = () => {
                             toast.warn(response.data.message);
                           } else {
                             toast.error(
-                              "Erro Interno. verifique sua conexão e tente novamente"
+                              "Erro Interno. verifique sua conexão e tente novamente",
                             );
                           }
                         } else {
                           toast.error(
-                            "Erro Interno. verifique sua conexão e tente novamente"
+                            "Erro Interno. verifique sua conexão e tente novamente",
                           );
                         }
                       } else {
                         toast.error(
-                          "Erro Interno. verifique sua conexão e tente novamente"
+                          "Erro Interno. verifique sua conexão e tente novamente",
                         );
                       }
                     });
@@ -1099,17 +1429,17 @@ const Tournament = () => {
                             toast.warn(response.data.message);
                           } else {
                             toast.error(
-                              "Erro Interno. verifique sua conexão e tente novamente"
+                              "Erro Interno. verifique sua conexão e tente novamente",
                             );
                           }
                         } else {
                           toast.error(
-                            "Erro Interno. verifique sua conexão e tente novamente"
+                            "Erro Interno. verifique sua conexão e tente novamente",
                           );
                         }
                       } else {
                         toast.error(
-                          "Erro Interno. verifique sua conexão e tente novamente"
+                          "Erro Interno. verifique sua conexão e tente novamente",
                         );
                       }
                     });
@@ -1130,7 +1460,10 @@ const Tournament = () => {
                   for (let i = 0; i < playresAward; i++) {
                     awardC.push(0);
                   }
-                  setAward(awardC);
+                  setAwardEdit(awardC);
+
+                  setStaff(0);
+                  setPlayresAward(0);
                   setIsOpenFinishAdd(true);
                 }}
               >
@@ -1153,17 +1486,17 @@ const Tournament = () => {
                             toast.warn(response.data.message);
                           } else {
                             toast.error(
-                              "Erro Interno. verifique sua conexão e tente novamente"
+                              "Erro Interno. verifique sua conexão e tente novamente",
                             );
                           }
                         } else {
                           toast.error(
-                            "Erro Interno. verifique sua conexão e tente novamente"
+                            "Erro Interno. verifique sua conexão e tente novamente",
                           );
                         }
                       } else {
                         toast.error(
-                          "Erro Interno. verifique sua conexão e tente novamente"
+                          "Erro Interno. verifique sua conexão e tente novamente",
                         );
                       }
                     });
@@ -1173,47 +1506,77 @@ const Tournament = () => {
               </Button>
             )}
           </InfosTournament>
+          <div
+            style={{
+              display: "flex",
+              marginBottom: 25,
+              alignItems: "flex-end",
+            }}
+          >
+            {tournament.status != "encerrado" &&
+              tournament.status != "criado" && (
+                <ViewInput
+                  style={{ maxWidth: 400, marginRight: 25, marginBottom: 0 }}
+                >
+                  <p>Procurar Cliente</p>
+                  <AutoComplete
+                    style={{
+                      width: "100%",
+                      fontSize: 14,
+                      textAlign: "left",
+                    }}
+                    options={clientsTournament}
+                    value={searchClient}
+                    notFoundContent={<>Nenhum cliente encontrado</>}
+                    onSelect={(text, chair) => {
+                      setClient(chair);
+                      chair.chair = chair.chair.replace("T", "");
+                      let [i, p] = chair.chair.split("-");
+                      setI(i);
+                      setP(p);
 
-          {tournament.status != "encerrado" &&
-            tournament.status != "criado" && (
-              <ViewInput style={{ maxWidth: 400, marginBottom: 25 }}>
-                <p>Procurar Cliente</p>
-                <AutoComplete
-                  style={{
-                    width: "100%",
-                    fontSize: 14,
-                    textAlign: "left",
-                  }}
-                  options={clientsTournament}
-                  value={searchClient}
-                  notFoundContent={<>Nenhum cliente encontrado</>}
-                  onSelect={(text, chair) => {
-                    setClient(chair);
-                    chair.chair = chair.chair.replace("T", "");
-                    let [i, p] = chair.chair.split("-");
-                    setI(i);
-                    setP(p);
+                      setIsOpenClient(true);
+                      setSearchClient("");
+                      setClients(clientsTournamentC);
+                    }}
+                    onSearch={(text) => {
+                      setSearchClient(text);
+                      setClientsTournament(
+                        clientsTournamentC.filter((item) => {
+                          return (
+                            String(item.label)
+                              .toUpperCase()
+                              .indexOf(text.toUpperCase()) != -1
+                          );
+                        }),
+                      );
+                    }}
+                    placeholder="procurar por nome"
+                  />
+                </ViewInput>
+              )}
 
-                    setIsOpenClient(true);
-                    setSearchClient("");
-                    setClients(clientsTournamentC);
-                  }}
-                  onSearch={(text) => {
-                    setNameClient(text);
-                    setClientsTournament(
-                      clientsTournamentC.filter((item) => {
-                        return (
-                          String(item.label)
-                            .toUpperCase()
-                            .indexOf(text.toUpperCase()) != -1
-                        );
-                      })
-                    );
-                  }}
-                  placeholder="procurar por nome"
-                />
-              </ViewInput>
+            {!!clientsTournamentWait.length && (
+              <Button
+                type={visibleWait && "primary"}
+                onClick={() => {
+                  setVisibleWait(!visibleWait);
+                }}
+              >
+                Visualizar Lista de Espera ({clientsTournamentWait.length})
+              </Button>
             )}
+            {!!clientsTournamentExit.length && (
+              <Button
+                type={"primary"}
+                onClick={() => {
+                  setVisibleExit(true);
+                }}
+              >
+                Jogadores Eliminados
+              </Button>
+            )}
+          </div>
           {tournament.status == "encerrado" && (
             <>
               <h2>Jogadores</h2>
@@ -1234,7 +1597,7 @@ const Tournament = () => {
                         <td>
                           {format(
                             new Date(transaction.date_out),
-                            "dd/MM/yyyy HH:mm"
+                            "dd/MM/yyyy HH:mm:ss",
                           )}
                         </td>
                       </tr>
@@ -1246,7 +1609,7 @@ const Tournament = () => {
                         <td>Posição</td>
                         <td>Cliente</td>
                         <td>Recompensa</td>
-                        <td>Elminação</td>
+                        <td>Eliminação</td>
                       </tr>
                     </thead>
                   )}
@@ -1272,6 +1635,11 @@ const Tournament = () => {
                   const initialPosition = source.index;
                   const finalPosition = destination.index;
 
+                  if (finalPosition == 9999) {
+                    toast.warn("Não é possivel mover para fila de espera");
+                    return;
+                  }
+
                   let chair_initial = 1,
                     position_initial = initialPosition;
 
@@ -1287,7 +1655,6 @@ const Tournament = () => {
                     position_final -= 10;
                     chair_final += 1;
                   }
-
                   await api
                     .post(`/move-tournament`, {
                       id: draggableId,
@@ -1306,23 +1673,127 @@ const Tournament = () => {
                             toast.warn(response.data.message);
                           } else {
                             toast.error(
-                              "Erro Interno. verifique sua conexão e tente novamente"
+                              "Erro Interno. verifique sua conexão e tente novamente",
                             );
                           }
                         } else {
                           toast.error(
-                            "Erro Interno. verifique sua conexão e tente novamente"
+                            "Erro Interno. verifique sua conexão e tente novamente",
                           );
                         }
                       } else {
                         toast.error(
-                          "Erro Interno. verifique sua conexão e tente novamente"
+                          "Erro Interno. verifique sua conexão e tente novamente",
                         );
                       }
                     });
                 }}
               >
                 <div className="drop-container">
+                  {visibleWait && !!clientsTournamentWait.length && (
+                    <Chair
+                      style={{
+                        maxHeight: "auto",
+                        minHeight: "80px",
+                        height: "auto",
+                      }}
+                    >
+                      <h2>Lista de Espera</h2>
+
+                      <div className="row">
+                        <div className="column-drop" style={{ width: "100%" }}>
+                          <Droppable droppableId={"droppable-" + "1-" + 999}>
+                            {(provided, snapshot) => (
+                              <div
+                                className="column"
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  flexWrap: "wrap",
+                                  justifyContent: "flex-start",
+                                  width: "100%",
+                                }}
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                              >
+                                {clientsTournamentWait.map((chair, p) => {
+                                  return (
+                                    <Client
+                                      style={{
+                                        borderBottomWidth:
+                                          p <
+                                          clientsTournamentWait.length -
+                                            (clientsTournamentWait.length %
+                                              2 ===
+                                            0
+                                              ? 2
+                                              : 1)
+                                            ? 1
+                                            : 0,
+                                        borderLeftWidth: p % 2 == 1 ? 1 : 0,
+                                        minWidth: "50%",
+                                        flex: 1,
+                                      }}
+                                    >
+                                      <h2>P{p + 1}:</h2>
+                                      <div>
+                                        <Draggable
+                                          key={chair.id}
+                                          draggableId={chair.id}
+                                          index={9999}
+                                        >
+                                          {(provided, snapshot) => {
+                                            return (
+                                              <div
+                                                ref={provided.innerRef}
+                                                {...provided.dragHandleProps}
+                                                {...provided.draggableProps}
+                                                style={{
+                                                  ...{
+                                                    borderBottomWidth:
+                                                      p >= 8 ? 0 : 1,
+                                                    borderLeftWidth:
+                                                      p % 2 == 0 ? 0 : 1,
+                                                  },
+                                                  ...getItemStyle(
+                                                    snapshot.isDragging,
+                                                    snapshot.isDragging
+                                                      ? provided.draggableProps
+                                                          .style
+                                                      : {},
+                                                  ),
+                                                }}
+                                              >
+                                                <p>{chair.name}</p>
+                                                <MdOutlineMoreVert
+                                                  onClick={() => {
+                                                    setClient(chair);
+                                                    setI(i);
+                                                    setP(p);
+                                                    setIsOpenClient(true);
+                                                  }}
+                                                  color="#001B22"
+                                                  size={22}
+                                                  style={{
+                                                    marginRight: -8,
+                                                    cursor: "pointer",
+                                                  }}
+                                                />
+                                              </div>
+                                            );
+                                          }}
+                                        </Draggable>
+                                      </div>
+                                    </Client>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </Droppable>
+                        </div>
+                      </div>
+                    </Chair>
+                  )}
                   {chairs.map((item, i) => {
                     return (
                       <Chair>
@@ -1373,7 +1844,7 @@ const Tournament = () => {
                                                             ? provided
                                                                 .draggableProps
                                                                 .style
-                                                            : {}
+                                                            : {},
                                                         ),
                                                       }}
                                                     >
@@ -1419,16 +1890,17 @@ const Tournament = () => {
                                                           differenceInSeconds(
                                                             new Date(),
                                                             new Date(
-                                                              tournament.datetime_max_in
-                                                            )
+                                                              tournament.datetime_max_in,
+                                                            ),
                                                           ) -
-                                                            tournament.seconds_paused >
+                                                            (tournament.seconds_paused +
+                                                              tournament.seconds_ajusted) >
                                                             0 &&
                                                           tournament.status ==
                                                             "inscricao"
                                                         ) {
                                                           toast.warn(
-                                                            "Inscrições finalizadas"
+                                                            "Inscrições finalizadas",
                                                           );
                                                         } else {
                                                           setClient("");
@@ -1436,32 +1908,34 @@ const Tournament = () => {
                                                           setChair(i + 1);
                                                           setPosition(p + 1);
                                                           setTimechip(false);
-
+                                                          setClients(clientsC);
+                                                          setTypeChair("mesa");
                                                           setValue(0);
                                                           if (
                                                             tournament.status ==
                                                             "aberto"
                                                           ) {
                                                             setTimerTimechip(
-                                                              true
+                                                              true,
                                                             );
                                                           } else {
                                                             if (
                                                               differenceInSeconds(
                                                                 new Date(),
                                                                 new Date(
-                                                                  tournament.datetime_max_timechip
-                                                                )
+                                                                  tournament.datetime_max_timechip,
+                                                                ),
                                                               ) -
-                                                                tournament.seconds_paused >
+                                                                (tournament.seconds_paused +
+                                                                  tournament.seconds_ajusted) >
                                                               0
                                                             ) {
                                                               setTimerTimechip(
-                                                                false
+                                                                false,
                                                               );
                                                             } else {
                                                               setTimerTimechip(
-                                                                true
+                                                                true,
                                                               );
                                                             }
                                                           }
@@ -1470,7 +1944,7 @@ const Tournament = () => {
                                                         }
                                                       } else {
                                                         toast.warn(
-                                                          "Inscrições finalizadas"
+                                                          "Inscrições finalizadas",
                                                         );
                                                       }
                                                     }}
@@ -1535,7 +2009,7 @@ const Tournament = () => {
                                                           ? provided
                                                               .draggableProps
                                                               .style
-                                                          : {}
+                                                          : {},
                                                       ),
                                                     }}
                                                   >
@@ -1585,16 +2059,17 @@ const Tournament = () => {
                                                           differenceInSeconds(
                                                             new Date(),
                                                             new Date(
-                                                              tournament.datetime_max_in
-                                                            )
+                                                              tournament.datetime_max_in,
+                                                            ),
                                                           ) -
-                                                            tournament.seconds_paused >
+                                                            (tournament.seconds_paused +
+                                                              tournament.seconds_ajusted) >
                                                             0 &&
                                                           tournament.status ==
                                                             "inscricao"
                                                         ) {
                                                           toast.warn(
-                                                            "Inscrições finalizadas"
+                                                            "Inscrições finalizadas",
                                                           );
                                                         } else {
                                                           setClient("");
@@ -1602,7 +2077,7 @@ const Tournament = () => {
                                                           setChair(i + 1);
                                                           setPosition(p + 1);
                                                           setTimechip(false);
-
+                                                          setClients(clientsC);
                                                           setValue(0);
 
                                                           if (
@@ -1610,25 +2085,26 @@ const Tournament = () => {
                                                             "aberto"
                                                           ) {
                                                             setTimerTimechip(
-                                                              true
+                                                              true,
                                                             );
                                                           } else {
                                                             if (
                                                               differenceInSeconds(
                                                                 new Date(),
                                                                 new Date(
-                                                                  tournament.datetime_max_timechip
-                                                                )
+                                                                  tournament.datetime_max_timechip,
+                                                                ),
                                                               ) -
-                                                                tournament.seconds_paused >
+                                                                (tournament.seconds_paused +
+                                                                  tournament.seconds_ajusted) >
                                                               0
                                                             ) {
                                                               setTimerTimechip(
-                                                                false
+                                                                false,
                                                               );
                                                             } else {
                                                               setTimerTimechip(
-                                                                true
+                                                                true,
                                                               );
                                                             }
                                                           }
@@ -1637,7 +2113,7 @@ const Tournament = () => {
                                                         }
                                                       } else {
                                                         toast.warn(
-                                                          "Inscrições finalizadas"
+                                                          "Inscrições finalizadas",
                                                         );
                                                       }
                                                     }}
@@ -1720,44 +2196,104 @@ const Tournament = () => {
                                 .toUpperCase()
                                 .indexOf(text.toUpperCase()) != -1
                             );
-                          })
+                          }),
                         );
                       }}
                       placeholder="procurar por nome"
                     />
                   </ViewInput>
                   <ViewInput>
-                    <p>Mesa</p>
-                    <Select
-                      placeholder={"Selecione a mesa"}
-                      value={chair || null}
-                      style={{ width: "100%", fontSize: 14, textAlign: "left" }}
-                      onChange={(text, chair) => {
-                        setChair(chair.value);
-                        setPositions(
-                          chairs[chair.value - 1].chairs.filter((item) => {
-                            return !item.name;
-                          })
-                        );
+                    <p>Em mesa ou Lista de Espera?*</p>
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
                       }}
-                      options={chairsN}
-                      notFoundContent={<>Nenhuma mesa encontrada</>}
-                    />
+                    >
+                      <Button
+                        style={{
+                          width: "49%",
+                        }}
+                        type={typeChair == "mesa" && "primary"}
+                        onClick={() => {
+                          setTypeChair("mesa");
+
+                          const mesaDisponivel = chairs.findIndex((mesa) => {
+                            const ocupadas = mesa.chairs.filter(
+                              (pos) => !!pos.name,
+                            ).length;
+                            return ocupadas < 7;
+                          });
+                          setChair(mesaDisponivel + 1);
+                          let positions = chairs[mesaDisponivel].chairs.filter(
+                            (item) => {
+                              return !item.name;
+                            },
+                          );
+
+                          setPositions(positions);
+                          setPosition(positions[0].value || "");
+                        }}
+                      >
+                        Em Mesa
+                      </Button>
+                      <Button
+                        style={{
+                          width: "49%",
+                        }}
+                        type={typeChair == "espera" && "primary"}
+                        onClick={() => {
+                          setTypeChair("espera");
+                        }}
+                      >
+                        Lista de Espera
+                      </Button>
+                    </div>
                   </ViewInput>
-                  <ViewInput>
-                    <p>Posição</p>
-                    <Select
-                      disabled={!chair}
-                      placeholder={"Selecione a posição"}
-                      value={position || null}
-                      style={{ width: "100%", fontSize: 14, textAlign: "left" }}
-                      onChange={(text, position) => {
-                        setPosition(position.value);
-                      }}
-                      options={positions}
-                      notFoundContent={<>Nenhuma mesa encontrada</>}
-                    />
-                  </ViewInput>
+                  {typeChair == "mesa" && (
+                    <>
+                      <ViewInput>
+                        <p>Mesa</p>
+                        <Select
+                          placeholder={"Selecione a mesa"}
+                          value={chair || null}
+                          style={{
+                            width: "100%",
+                            fontSize: 14,
+                            textAlign: "left",
+                          }}
+                          onChange={(text, chair) => {
+                            setChair(chair.value);
+                            setPositions(
+                              chairs[chair.value - 1].chairs.filter((item) => {
+                                return !item.name;
+                              }),
+                            );
+                          }}
+                          options={chairsN}
+                          notFoundContent={<>Nenhuma mesa encontrada</>}
+                        />
+                      </ViewInput>
+                      <ViewInput>
+                        <p>Posição</p>
+                        <Select
+                          disabled={!chair}
+                          placeholder={"Selecione a posição"}
+                          value={position || null}
+                          style={{
+                            width: "100%",
+                            fontSize: 14,
+                            textAlign: "left",
+                          }}
+                          onChange={(text, position) => {
+                            setPosition(position.value);
+                          }}
+                          options={positions}
+                          notFoundContent={<>Nenhuma mesa encontrada</>}
+                        />
+                      </ViewInput>
+                    </>
+                  )}
                   <ViewInput style={{ textAlign: "left" }}>
                     <p>Timechip?</p>
                     <Switch
@@ -1792,13 +2328,13 @@ const Tournament = () => {
                               <Button
                                 onClick={() => {
                                   let isPurchase = purchases.some(
-                                    (item) => item.id == purchase.id
+                                    (item) => item.id == purchase.id,
                                   );
                                   if (isPurchase) {
                                     setPurchases(
                                       purchases.filter(
-                                        (item) => item.id != purchase.id
-                                      )
+                                        (item) => item.id != purchase.id,
+                                      ),
                                     );
                                     setValue(value - purchase.value);
                                   } else {
@@ -1808,6 +2344,9 @@ const Tournament = () => {
                                         id: purchase.id,
                                         name: purchase.name,
                                         value: purchase.value,
+                                        value_staff: purchase.value_staff,
+                                        token_staff: purchase.token_staff,
+                                        token: purchase.token,
                                         type: purchase.type,
                                         buy_staff: false,
                                         amount: 1,
@@ -1818,7 +2357,7 @@ const Tournament = () => {
                                 }}
                                 type={
                                   purchases.some(
-                                    (item) => item.id == purchase.id
+                                    (item) => item.id == purchase.id,
                                   )
                                     ? "primary"
                                     : "default"
@@ -1846,16 +2385,17 @@ const Tournament = () => {
                                     }}
                                     disabled={
                                       !purchases.some(
-                                        (item) => item.id == purchase.id
+                                        (item) => item.id == purchase.id,
                                       )
                                     }
                                     checked={purchases.some(
                                       (item) =>
-                                        item.id == purchase.id && item.buy_staff
+                                        item.id == purchase.id &&
+                                        item.buy_staff,
                                     )}
                                     onChange={() => {
                                       const index = purchases.findIndex(
-                                        (item) => item.id == purchase.id
+                                        (item) => item.id == purchase.id,
                                       );
                                       let purchasesC = [...purchases];
                                       if (purchasesC[index].buy_staff) {
@@ -1877,7 +2417,7 @@ const Tournament = () => {
                     </Payments>
                   )}
                 {tournament.purchases.some(
-                  (item) => item.type == "purchase"
+                  (item) => item.type == "purchase",
                 ) && (
                   <Payments>
                     <h4>Compras</h4>
@@ -1888,13 +2428,13 @@ const Tournament = () => {
                             <Button
                               onClick={() => {
                                 let isPurchase = purchases.some(
-                                  (item) => item.id == purchase.id
+                                  (item) => item.id == purchase.id,
                                 );
                                 if (isPurchase) {
                                   setPurchases(
                                     purchases.filter(
-                                      (item) => item.id != purchase.id
-                                    )
+                                      (item) => item.id != purchase.id,
+                                    ),
                                   );
                                   setValue(value - purchase.value);
                                 } else {
@@ -1904,6 +2444,11 @@ const Tournament = () => {
                                       id: purchase.id,
                                       name: purchase.name,
                                       value: purchase.value,
+                                      value_staff: purchase.value_staff,
+                                      token_staff: purchase.token_staff,
+                                      token: purchase.token,
+                                      type: purchase.type,
+                                      buy_staff: false,
                                       amount: 1,
                                     },
                                   ]);
@@ -1938,16 +2483,16 @@ const Tournament = () => {
                                   }}
                                   disabled={
                                     !purchases.some(
-                                      (item) => item.id == purchase.id
+                                      (item) => item.id == purchase.id,
                                     )
                                   }
                                   checked={purchases.some(
                                     (item) =>
-                                      item.id == purchase.id && item.buy_staff
+                                      item.id == purchase.id && item.buy_staff,
                                   )}
                                   onChange={() => {
                                     const index = purchases.findIndex(
-                                      (item) => item.id == purchase.id
+                                      (item) => item.id == purchase.id,
                                     );
                                     let purchasesC = [...purchases];
                                     if (purchasesC[index].buy_staff) {
@@ -1969,7 +2514,7 @@ const Tournament = () => {
                   </Payments>
                 )}
                 {tournament.purchases.some(
-                  (item) => item.type == "service"
+                  (item) => item.type == "service",
                 ) && (
                   <Payments>
                     <h4>Serviços</h4>
@@ -1980,13 +2525,13 @@ const Tournament = () => {
                             <Button
                               onClick={() => {
                                 let isPurchase = purchases.some(
-                                  (item) => item.id == purchase.id
+                                  (item) => item.id == purchase.id,
                                 );
                                 if (isPurchase) {
                                   setPurchases(
                                     purchases.filter(
-                                      (item) => item.id != purchase.id
-                                    )
+                                      (item) => item.id != purchase.id,
+                                    ),
                                   );
                                   setValue(value - purchase.value);
                                 } else {
@@ -1996,6 +2541,7 @@ const Tournament = () => {
                                       id: purchase.id,
                                       name: purchase.name,
                                       value: purchase.value,
+                                      type: purchase.type,
                                       amount: 1,
                                     },
                                   ]);
@@ -2070,7 +2616,7 @@ const Tournament = () => {
                       setMethods_transaction(
                         methods_transaction.filter((data, i) => {
                           return i != index;
-                        })
+                        }),
                       );
                     }}
                   />
@@ -2098,7 +2644,7 @@ const Tournament = () => {
             }}
           >
             <ClientChair>
-              {client.chair && (
+              {!!client && (
                 <>
                   <div className="infos">
                     <span>Nome:</span>
@@ -2139,8 +2685,8 @@ const Tournament = () => {
                           client.debt == client.receive
                             ? "#000"
                             : client.debt > client.receive
-                            ? "#d63211"
-                            : "#1eb019",
+                              ? "#d63211"
+                              : "#1eb019",
                       }}
                     >
                       {(client.receive - client.debt).toLocaleString("pt-br", {
@@ -2153,21 +2699,27 @@ const Tournament = () => {
                     <span>Entrada:</span>
                     <p
                       style={{
-                        color: client.client_tournaments[0].purchases.some(
-                          (item) => item.type == "entrie"
+                        color: client.client_tournaments[0]?.purchases.some(
+                          (item) => item.type == "entrie",
                         )
                           ? "#1eb019"
                           : "#d63211",
                       }}
                     >
-                      {client.client_tournaments[0].purchases.some(
-                        (item) => item.type == "entrie"
+                      {client.client_tournaments[0]?.purchases.some(
+                        (item) => item.type === "entrie",
                       )
-                        ? client.client_tournaments[0].purchases
-                            .filter((item) => item.type == "entrie")
-                            .map((item, idx) =>
-                              idx ? ", " + item.name : item.name
-                            )
+                        ? Object.entries(
+                            client.client_tournaments[0]?.purchases
+                              .filter((item) => item.type === "entrie")
+                              .reduce((acc, item) => {
+                                acc[item.name] = (acc[item.name] || 0) + 1;
+                                return acc;
+                              }, {}),
+                          ).map(
+                            ([name, count], idx) =>
+                              `${idx ? ", " : ""}${name} x${count}`,
+                          )
                         : "Nenhuma compra"}
                     </p>
                   </div>
@@ -2175,21 +2727,27 @@ const Tournament = () => {
                     <span>Compras:</span>
                     <p
                       style={{
-                        color: client.client_tournaments[0].purchases.some(
-                          (item) => item.type == "purchase"
+                        color: client.client_tournaments[0]?.purchases.some(
+                          (item) => item.type == "purchase",
                         )
                           ? "#1eb019"
                           : "#d63211",
                       }}
                     >
-                      {client.client_tournaments[0].purchases.some(
-                        (item) => item.type == "purchase"
+                      {client.client_tournaments[0]?.purchases.some(
+                        (item) => item.type === "purchase",
                       )
-                        ? client.client_tournaments[0].purchases
-                            .filter((item) => item.type == "purchase")
-                            .map((item, idx) =>
-                              idx ? ", " + item.name : item.name
-                            )
+                        ? Object.entries(
+                            client.client_tournaments[0]?.purchases
+                              .filter((item) => item.type === "purchase")
+                              .reduce((acc, item) => {
+                                acc[item.name] = (acc[item.name] || 0) + 1;
+                                return acc;
+                              }, {}),
+                          ).map(
+                            ([name, count], idx) =>
+                              `${idx ? ", " : ""}${name} x${count}`,
+                          )
                         : "Nenhuma compra"}
                     </p>
                   </div>
@@ -2197,21 +2755,27 @@ const Tournament = () => {
                     <span>Serviços:</span>
                     <p
                       style={{
-                        color: client.client_tournaments[0].purchases.some(
-                          (item) => item.type == "service"
+                        color: client.client_tournaments[0]?.purchases.some(
+                          (item) => item.type == "service",
                         )
                           ? "#1eb019"
                           : "#d63211",
                       }}
                     >
-                      {client.client_tournaments[0].purchases.some(
-                        (item) => item.type == "service"
+                      {client.client_tournaments[0]?.purchases.some(
+                        (item) => item.type === "service",
                       )
-                        ? client.client_tournaments[0].purchases
-                            .filter((item) => item.type == "service")
-                            .map((item, idx) =>
-                              idx ? ", " + item.name : item.name
-                            )
+                        ? Object.entries(
+                            client.client_tournaments[0]?.purchases
+                              .filter((item) => item.type === "service")
+                              .reduce((acc, item) => {
+                                acc[item.name] = (acc[item.name] || 0) + 1;
+                                return acc;
+                              }, {}),
+                          ).map(
+                            ([name, count], idx) =>
+                              `${idx ? ", " : ""}${name} x${count}`,
+                          )
                         : "Nenhuma compra"}
                     </p>
                   </div>
@@ -2234,57 +2798,28 @@ const Tournament = () => {
                 </button>
                 {(tournament.status == "inscricao" ||
                   tournament.status == "aberto") && (
-                    <button
-                      onClick={() => {
-                        setValue(0);
-                        setClient(client);
-                        setId(client.id);
-                        setChair(i + 1);
-                        setPosition(p + 1);
-                        setIsOpenClient(false);
-                        setIsOpen(true);
-                      }}
-                    >
-                      <Tooltip title="Compra Torneio">
-                        <MdMonetizationOn color="#001B22" size={22} />
-                      </Tooltip>
-                    </button>
-                  )}
-
-                <button
-                  onClick={() => {
-                    setId(client.id);
-                    setClient(client);
-                    setChair("");
-                    setPosition("");
-                    setIsOpenClient(false);
-                    setIsOpen(true);
-                  }}
-                >
-                  <Tooltip title="Trocar de Posição">
-                    <MdAutorenew color="#001B22" size={22} />
-                  </Tooltip>
-                </button>
+                  <button
+                    onClick={() => {
+                      setValue(0);
+                      setClient(client);
+                      setId(client.id);
+                      setChair(i + 1);
+                      setPosition(p + 1);
+                      setIsOpenClient(false);
+                      setIsOpen(true);
+                    }}
+                  >
+                    <Tooltip title="Compra Torneio">
+                      <MdMonetizationOn color="#001B22" size={22} />
+                    </Tooltip>
+                  </button>
+                )}
                 {(tournament.status == "aberto" ||
                   tournament.status == "inscricao") && (
                   <button
                     onClick={() => {
                       setIsOpenClient(false);
-                      confirm({
-                        title: "Deseja cancelar compras do jogador no Torneio?",
-                        icon: <ExclamationCircleFilled />,
-                        content: `Após essa ação, o jogador ${client.name} sairá do Torneio e todas as compras serão canceladas e estornadas.`,
-                        onOk() {
-                          canceledClient(client, i, p);
-                        },
-                        onCancel() {},
-                        cancelText: "Cancelar",
-                      });
-                    }}
-                    style={{
-                      position: "absolute",
-                      right: 35,
-                      marginRight: 0,
+                      loadTransactions();
                     }}
                   >
                     <Tooltip title="Cancelar Compras">
@@ -2297,7 +2832,7 @@ const Tournament = () => {
                   onClick={() => {
                     setIsOpenClient(false);
                     const position = tournament.clients.filter(
-                      (item) => item.exit == false
+                      (item) => item.exit == false,
                     ).length;
                     if (award.length >= position) {
                       setPositionAward(position);
@@ -2347,9 +2882,12 @@ const Tournament = () => {
                 marginBottom: 25,
               }}
             >
-              <span>
-                Premiação Garantida {getValue(tournament.totalAward_guaranteed)}
-              </span>
+              {!!tournament.totalAward_guaranteed && (
+                <span>
+                  Premiação Garantida{" "}
+                  {getValue(tournament.totalAward_guaranteed)}
+                </span>
+              )}
               <span>
                 Premiação Acumulada{" "}
                 {getValue(tournament.totalAward_accumulated)}
@@ -2360,8 +2898,8 @@ const Tournament = () => {
                   {getValue(
                     tournament.vacancys.reduce(
                       (acumulador, item) => acumulador + item.value,
-                      0
-                    )
+                      0,
+                    ),
                   )}
                 </span>
               )}
@@ -2369,10 +2907,17 @@ const Tournament = () => {
                 <span>
                   Premiação Ranking{" "}
                   {getValue(
-                    tournament.rankings.reduce(
-                      (acumulador, item) => acumulador + item.value,
-                      0
-                    )
+                    tournament.rankings.reduce((acumulador, item) => {
+                      if (item.type == "value") {
+                        return acumulador + item.value;
+                      } else {
+                        return (
+                          acumulador +
+                          tournament.totalAward_accumulated *
+                            (item.percentage / 100)
+                        );
+                      }
+                    }, 0),
                   )}
                 </span>
               )}
@@ -2408,22 +2953,36 @@ const Tournament = () => {
                         staff -
                         tournament.vacancys.reduce(
                           (acumulador, item) => acumulador + item.value,
-                          0
+                          0,
                         ) -
-                        tournament.rankings.reduce(
-                          (acumulador, item) => acumulador + item.value,
-                          0
-                        )
+                        tournament.rankings.reduce((acumulador, item) => {
+                          if (item.type == "value") {
+                            return acumulador + item.value;
+                          } else {
+                            return (
+                              acumulador +
+                              tournament.totalAward_accumulated *
+                                (item.percentage / 100)
+                            );
+                          }
+                        }, 0)
                     : tournament.totalAward_guaranteed -
                         staff -
                         tournament.vacancys.reduce(
                           (acumulador, item) => acumulador + item.value,
-                          0
+                          0,
                         ) -
-                        tournament.rankings.reduce(
-                          (acumulador, item) => acumulador + item.value,
-                          0
-                        )
+                        tournament.rankings.reduce((acumulador, item) => {
+                          if (item.type == "value") {
+                            return acumulador + item.value;
+                          } else {
+                            return (
+                              acumulador +
+                              tournament.totalAward_accumulated *
+                                (item.percentage / 100)
+                            );
+                          }
+                        }, 0),
                 )}{" "}
                 {award.length
                   ? `(Resta ${getValue(
@@ -2436,12 +2995,19 @@ const Tournament = () => {
                             }) -
                             tournament.vacancys.reduce(
                               (acumulador, item) => acumulador + item.value,
-                              0
+                              0,
                             ) -
-                            tournament.rankings.reduce(
-                              (acumulador, item) => acumulador + item.value,
-                              0
-                            )
+                            tournament.rankings.reduce((acumulador, item) => {
+                              if (item.type == "value") {
+                                return acumulador + item.value;
+                              } else {
+                                return (
+                                  acumulador +
+                                  tournament.totalAward_accumulated *
+                                    (item.percentage / 100)
+                                );
+                              }
+                            }, 0)
                         : tournament.totalAward_guaranteed -
                             staff -
                             award.reduce((soma, i) => {
@@ -2449,17 +3015,24 @@ const Tournament = () => {
                             }) -
                             tournament.vacancys.reduce(
                               (acumulador, item) => acumulador + item.value,
-                              0
+                              0,
                             ) -
-                            tournament.rankings.reduce(
-                              (acumulador, item) => acumulador + item.value,
-                              0
-                            )
+                            tournament.rankings.reduce((acumulador, item) => {
+                              if (item.type == "value") {
+                                return acumulador + item.value;
+                              } else {
+                                return (
+                                  acumulador +
+                                  tournament.totalAward_accumulated *
+                                    (item.percentage / 100)
+                                );
+                              }
+                            }, 0),
                     )})`
                   : ""}
               </span>
 
-              {award.length == 0 ? (
+              {awardEdit.length == 0 ? (
                 <>
                   <ViewInput style={{ marginTop: 10 }}>
                     <p>Qt de Jogadores premiados</p>
@@ -2478,7 +3051,7 @@ const Tournament = () => {
                       for (let i = 0; i < playresAward; i++) {
                         awardC.push(0);
                       }
-                      setAward(awardC);
+                      setAwardEdit(awardC);
                     }}
                   >
                     Gerar
@@ -2487,7 +3060,7 @@ const Tournament = () => {
               ) : (
                 <>
                   <ViewAward>
-                    {award.map((item, index) => {
+                    {awardEdit.map((item, index) => {
                       return (
                         <div style={{ width: "45%" }}>
                           <span>{index + 1}</span>
@@ -2508,11 +3081,11 @@ const Tournament = () => {
                             }}
                             currency="BRL"
                             config={currencyConfig}
-                            value={award[index]}
+                            value={awardEdit[index]}
                             onChange={(event, value) => {
-                              let awardC = [...award];
+                              let awardC = [...awardEdit];
                               awardC[index] = value;
-                              setAward(awardC);
+                              setAwardEdit(awardC);
                             }}
                           />
                         </div>
@@ -2521,7 +3094,7 @@ const Tournament = () => {
                   </ViewAward>
                   <Button
                     onClick={() => {
-                      setAward([]);
+                      setAwardEdit([]);
                     }}
                   >
                     Limpar
@@ -2629,7 +3202,7 @@ const Tournament = () => {
                     setMethods_transaction(
                       methods_transaction.filter((data, i) => {
                         return i != index;
-                      })
+                      }),
                     );
                   }}
                 />
@@ -2685,7 +3258,7 @@ const Tournament = () => {
                             .toUpperCase()
                             .indexOf(text.toUpperCase()) != -1
                         );
-                      })
+                      }),
                     );
                   }}
                   placeholder="procurar por nome"
@@ -2693,210 +3266,623 @@ const Tournament = () => {
               </ViewInput>
             </div>
           </Modal>
+          <Modal
+            title="Nova Compra"
+            width={500}
+            open={isOpenNewPurchase}
+            okText={"ADICIONAR"}
+            cancelText="FECHAR"
+            onOk={() => {
+              addPurchase();
+            }}
+            onCancel={() => {
+              setIsOpenNewPurchase(false);
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+                marginBottom: 25,
+              }}
+            >
+              <ViewInput>
+                <p>Nome</p>
+                <Input
+                  placeholder="nome"
+                  status={errorModal && !namePurchase && "error"}
+                  value={namePurchase}
+                  onChange={(event) => setNamePurchase(event.target.value)}
+                />
+              </ViewInput>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  width: "100%",
+                  justifyContent: "space-between",
+                }}
+              >
+                <ViewInput style={{ width: "49%" }}>
+                  <p>Tipo de Compra</p>
+                  <Select
+                    value={typePurchase || null}
+                    placeholder="tipo"
+                    status={errorModal && !typePurchase && "error"}
+                    dropdownStyle={{ color: "#000" }}
+                    style={{
+                      width: "100%",
+                      fontSize: 14,
+                    }}
+                    onChange={(text) => {
+                      setTypePurchase(text);
+                      if (text != "service") {
+                        setCashierPurchase("clube");
+                      }
+                    }}
+                    options={[
+                      {
+                        value: "purchase",
+                        label: "Compra",
+                      },
+                      {
+                        value: "entrie",
+                        label: "Entrada",
+                      },
+                      {
+                        value: "service",
+                        label: "Serviço",
+                      },
+                    ]}
+                  />
+                </ViewInput>
+                <ViewInput style={{ width: "49%" }}>
+                  <p>Caixa</p>
+                  <Select
+                    value={cashierPurchase || null}
+                    placeholder="caixa"
+                    status={errorModal && !cashierPurchase && "error"}
+                    dropdownStyle={{ color: "#000" }}
+                    style={{
+                      width: "100%",
+                      fontSize: 14,
+                    }}
+                    onChange={(text) => {
+                      setCashierPurchase(text);
+                    }}
+                    disabled={typePurchase != "service"}
+                    options={
+                      typePurchase == "service"
+                        ? [
+                            {
+                              value: "dealer",
+                              label: "Dealer",
+                            },
+                            {
+                              value: "passport",
+                              label: "Passaporte",
+                            },
+                            {
+                              value: "jackpot",
+                              label: "Jackpot",
+                            },
+                            {
+                              value: "clube",
+                              label: "Clube",
+                            },
+                          ]
+                        : [
+                            {
+                              value: "clube",
+                              label: "Clube",
+                            },
+                          ]
+                    }
+                  />
+                </ViewInput>
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "row",
+                  width: "100%",
+                  justifyContent: "space-between",
+                }}
+              >
+                {typePurchase != "service" && (
+                  <ViewInput style={{ width: "49%" }}>
+                    <p>Fichas</p>
+                    <Input
+                      placeholder="quantidade"
+                      status={errorModal && !tokenPurchase && "error"}
+                      value={tokenPurchase || ""}
+                      type="number"
+                      onChange={(event) =>
+                        setTokenPurchase(parseInt(event.target.value))
+                      }
+                    />
+                  </ViewInput>
+                )}
+                <ViewInput
+                  style={{ width: typePurchase != "service" ? "49%" : "100%" }}
+                >
+                  <p>Valor</p>
+                  <IntlCurrencyInput
+                    style={{
+                      width: "100%",
+                      backgroundColor: "#FFF",
+                      borderWidth: 0,
+                      color: "#001B22",
+                      padding: "8px",
+                      fontSize: 14,
+                      height: 32,
+                      borderWidth: 1,
+                      borderColor: "#ccc",
+                      borderStyle: "solid",
+                      borderRadius: 2,
+                      fontWeight: "400",
+                      paddingLeft: 12,
+                    }}
+                    currency="BRL"
+                    config={currencyConfig}
+                    value={valuePurchase}
+                    onChange={(event, value) => setValuePurchase(value)}
+                  />
+                </ViewInput>
+              </div>
+              {typePurchase != "service" && (
+                <ViewInput style={{ width: "100%", maxWidth: 60 }}>
+                  <p>Staff?</p>
+                  <Switch
+                    style={{
+                      minWidth: 20,
+                      padding: 0,
+                      borderRadius: 15,
+                      marginTop: 5,
+                    }}
+                    checked={isStaff}
+                    onChange={() => {
+                      setIsStaff(!isStaff);
+                      setStaffToken("");
+                      setStaffValue("");
+                    }}
+                  />
+                </ViewInput>
+              )}
+              {typePurchase != "service" && isStaff && (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      flexDirection: "row",
+                      width: "100%",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <ViewInput style={{ width: "49%" }}>
+                      <p>Staff Fichas</p>
+                      <Input
+                        placeholder="quantidade"
+                        status={errorModal && !staffToken && "error"}
+                        value={staffToken || ""}
+                        type="number"
+                        onChange={(event) =>
+                          setStaffToken(parseInt(event.target.value))
+                        }
+                      />
+                    </ViewInput>
+                    <ViewInput style={{ width: "49%" }}>
+                      <p>Staff Valor</p>
+                      <IntlCurrencyInput
+                        style={{
+                          width: "100%",
+                          backgroundColor: "#FFF",
+                          borderWidth: 0,
+                          color: "#001B22",
+                          padding: "8px",
+                          fontSize: 14,
+                          height: 32,
+                          borderWidth: 1,
+                          borderColor: "#ccc",
+                          borderStyle: "solid",
+                          borderRadius: 2,
+                          fontWeight: "400",
+                          paddingLeft: 12,
+                        }}
+                        currency="BRL"
+                        config={currencyConfig}
+                        value={staffValue}
+                        onChange={(event, value) => setStaffValue(value)}
+                      />
+                    </ViewInput>
+                  </div>
+                </>
+              )}
+            </div>
+          </Modal>
+          <Modal
+            title="Imprimir Comanda"
+            width={320}
+            open={isOpenCommand}
+            cancelText="FECHAR"
+            okText="IMPRIMIR"
+            maskClosable={false}
+            onOk={() => {
+              handlePrint();
+            }}
+            onCancel={() => {
+              setIsOpenCommand(false);
+            }}
+          >
+            <div
+              ref={componentRef}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+                alignItems: "center",
+                marginBottom: 25,
+                fontWeight: "bold",
+                padding: "20px 15px",
+              }}
+            >
+              <h3 style={{ width: "100%", textAlign: "center", fontSize: 18 }}>
+                {tournament.name}
+              </h3>
+              <img src={logo} alt="" style={{ width: 150, marginBottom: 25 }} />
+              <p style={{ width: "100%" }}>Cliente: {command?.client?.name}</p>
+              <p style={{ width: "100%", lineHeight: 2 }}>{command?.chair}</p>
+              <TablePrint>
+                <thead>
+                  <tr>
+                    <td style={{ flex: 1 }}>Compra</td>
+                    <td style={{ textAlign: "center", width: 80 }}>Fichas</td>
+                    <td style={{ textAlign: "center", width: 80 }}>Valor</td>
+                  </tr>
+                </thead>
+                <tbody>
+                  {command?.purchases?.map((product) => (
+                    <tr key={product.id}>
+                      <td>{product.name}</td>
+                      <td style={{ textAlign: "center" }}>
+                        {product.token
+                          ? (product.token / 1000)
+                              .toFixed(1)
+                              .replace(".0", "") + "K"
+                          : "--"}
+                      </td>
+                      <td style={{ textAlign: "center", width: 80 }}>
+                        {product.value.toLocaleString("pt-br", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </td>
+                    </tr>
+                  ))}
+                  {!!command?.staff?.value && (
+                    <tr key={"staff"}>
+                      <td>Staff</td>
+                      <td style={{ textAlign: "center", width: 80 }}>
+                        {command?.staff?.token
+                          ? (command?.staff?.token / 1000)
+                              .toFixed(1)
+                              .replace(".0", "") + "K"
+                          : "--"}
+                      </td>
+                      <td style={{ textAlign: "center", width: 80 }}>
+                        {command?.staff?.value.toLocaleString("pt-br", {
+                          style: "currency",
+                          currency: "BRL",
+                        })}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </TablePrint>
+
+              {command?.methods_transaction?.map((item) => {
+                return (
+                  <p style={{ width: "100%", marginTop: 10 }}>
+                    {item.name}:{" "}
+                    {(item.value || 0).toLocaleString("pt-br", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                  </p>
+                );
+              })}
+              <h3 style={{ width: "100%", marginTop: 10 }}>
+                Total:{" "}
+                {(
+                  command?.purchases?.reduce((sum, item) => {
+                    return sum + item.value * item.amount;
+                  }, 0) ||
+                  0 + command?.staff ||
+                  0
+                ).toLocaleString("pt-br", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </h3>
+            </div>
+          </Modal>
+          <Modal
+            title="Cancelar Compras"
+            width={500}
+            confirmLoading={isLoadingModal}
+            open={isOpenCanceled}
+            okText="CONFIRMAR"
+            cancelText="FECHAR"
+            onOk={() => {
+              setIsOpenCanceled(false);
+              confirm({
+                title:
+                  "Deseja cancelar compras selecionadas do jogador no Torneio?",
+                icon: <ExclamationCircleFilled />,
+                content: `Após essa ação, o jogador ${client.name} todas as compras selecionadas serão canceladas e estornadas.`,
+                onOk() {
+                  canceledClient(client, i, p);
+                },
+                onCancel() {},
+                cancelText: "Cancelar",
+              });
+            }}
+            onCancel={() => {
+              setIsOpenCanceled(false);
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+                marginBottom: 25,
+              }}
+            >
+              <p>
+                Total de {transactions.length} compras realizadas, selecione
+                quais deseja cancelar
+              </p>
+              {transactions?.length != 0 && (
+                <Transaction style={{ marginTop: 10 }}>
+                  <p>Tipo</p>
+                  <p>Valor</p>
+                  <p>Status</p>
+                  <p>Data</p>
+                  <p style={{ maxWidth: 50, fontSize: 10 }}>Cancelar?</p>
+                </Transaction>
+              )}
+              {transactions.map((transaction) => (
+                <Transaction key={transaction.id}>
+                  <p>
+                    {transaction.items_transaction.map((item, index) => {
+                      return index == 0
+                        ? item.name || ""
+                        : item.name
+                          ? " , " + item.name
+                          : "";
+                    })}
+                  </p>
+                  <p
+                    style={{
+                      color:
+                        transaction.operation != "entrada"
+                          ? "#d63211"
+                          : "#1eb019",
+                    }}
+                  >
+                    {transaction.value.toLocaleString("pt-br", {
+                      style: "currency",
+                      currency: "BRL",
+                    })}
+                  </p>
+                  <p>
+                    {transaction.paid
+                      ? "Pago"
+                      : transaction.value_paid
+                        ? `Falta pagar ${getValue(
+                            transaction.value - transaction.value_paid,
+                          )}`
+                        : "Não Pago"}
+                  </p>
+                  <p style={{ fontSize: 10 }}>
+                    {format(
+                      new Date(transaction.create_at),
+                      "dd/MM/yyyy HH:mm",
+                    )}
+                  </p>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Checkbox
+                      checked={transactionsCanceled.some(
+                        (item) => item.id === transaction.id,
+                      )}
+                      onChange={() => {
+                        let transactionsCanceledC = [...transactionsCanceled];
+                        if (
+                          transactionsCanceled.some(
+                            (item) => item.id === transaction.id,
+                          )
+                        ) {
+                          transactionsCanceledC = transactionsCanceledC.filter(
+                            (item) => item.id !== transaction.id,
+                          );
+                          setTransactionsCanceled(transactionsCanceledC);
+                        } else {
+                          transactionsCanceledC.push(transaction);
+                          setTransactionsCanceled(transactionsCanceledC);
+                        }
+                      }}
+                    />
+                  </div>
+                </Transaction>
+              ))}
+              <Transaction key={"canceled"}>
+                <p>Cancelar todas</p>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Checkbox
+                    checked={transactionsCanceled.length == transactions.length}
+                    onChange={() => {
+                      if (transactionsCanceled.length == transactions.length) {
+                        setTransactionsCanceled([]);
+                      } else {
+                        setTransactionsCanceled(transactions);
+                      }
+                    }}
+                  />
+                </div>
+              </Transaction>
+            </div>
+          </Modal>
+          <Modal
+            title="Visualizar Compras"
+            width={500}
+            confirmLoading={isLoadingModal}
+            open={isOpenPurchases}
+            okText="FECHAR"
+            cancelButtonProps={{
+              style: {
+                display: "none",
+              },
+            }}
+            onCancel={() => {
+              setIsOpenPurchases(false);
+            }}
+            onOk={() => {
+              setIsOpenPurchases(false);
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+                marginBottom: 25,
+              }}
+            >
+              <p>
+                Total de{" "}
+                {
+                  [...new Set(purchasesModal.map((compra) => compra.client_id))]
+                    .length
+                }{" "}
+                clientes que compraram
+              </p>
+              <p>
+                {namePurchase} / {getValue(valuePurchase || 0)} /{" "}
+                {typePurchase == "service"
+                  ? "Serviço"
+                  : `${tokenPurchase} Tokens`}
+              </p>
+              {purchasesModal?.length != 0 && (
+                <Transaction style={{ marginTop: 10 }}>
+                  <p>Cliente</p>
+                  <p style={{ maxWidth: 80, textAlign: "center" }}>
+                    Quantitade
+                  </p>
+                </Transaction>
+              )}
+              {clientsAll.map((client) => {
+                let purchases = purchasesModal.filter((item) => {
+                  return item.client_id == client.client_tournaments[0].id;
+                }).length;
+                if (purchases) {
+                  return (
+                    <Transaction key={client.id}>
+                      <p>{client.name}</p>
+                      <p style={{ maxWidth: 80, textAlign: "center" }}>
+                        {purchases}x
+                      </p>
+                    </Transaction>
+                  );
+                }
+              })}
+            </div>
+          </Modal>
+          <Modal
+            title="Jogadores Eliminados"
+            width={500}
+            confirmLoading={isLoadingModal}
+            open={visibleExit}
+            okText="FECHAR"
+            cancelButtonProps={{
+              style: {
+                display: "none",
+              },
+            }}
+            onCancel={() => {
+              setVisibleExit(false);
+            }}
+            onOk={() => {
+              setVisibleExit(false);
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                width: "100%",
+                marginBottom: 25,
+              }}
+            >
+              {clientsTournamentExit.map((client) => {
+                return (
+                  <Transaction key={client.id}>
+                    <div
+                      style={{
+                        flex: 1,
+                        marginBottom: 5,
+                      }}
+                    >
+                      <p>{client.name}</p>
+                      <p
+                        style={{
+                          fontSize: 11,
+                        }}
+                      >
+                        Eliminado em{" "}
+                        {format(new Date(client.update_at), "dd/MM/yyyy HH:mm")}
+                      </p>
+                    </div>
+                    <Tooltip title="Retornar jogador para o torneio">
+                      <MdKeyboardReturn
+                        onClick={() => {
+                          confirm({
+                            title: `Deseja retornar jogador no Torneio?`,
+                            icon: <ExclamationCircleFilled />,
+                            content: `Após essa ação, o jogador ${client.name} retorna para o torneio na lista de espera.`,
+                            onOk() {
+                              returnClient(client);
+                            },
+                            onCancel() {},
+                            cancelText: "Cancelar",
+                          });
+                        }}
+                        style={{
+                          cursor: "pointer",
+                        }}
+                      />
+                    </Tooltip>
+                  </Transaction>
+                );
+              })}
+            </div>
+          </Modal>
         </>
       )}
       {isLoading && <Loader />}
-      {/*
-        
-        
-                          {tournament.is_rebuy ? (
-                            <>
-                              { tournament.enable_rebuy && (
-                                <div className='amount'>
-                                  <p>Rebuy</p>
-                                  <span>{getValue(0)}</span>
-                                  <div className='row' style={{opacity: rebuy + (rebuyDuplo * 2) + (rebuyTriplo * 3) >= tournament.max_rebuy ?  0.5 : 1}}>
-                                    <button onClick={() => {
-                                        if(rebuy + (rebuyDuplo * 2) + (rebuyTriplo * 3) + 1 <= tournament.max_rebuy){
-                                          setRebuy(rebuy + 1)
-                                          setValue(value +(tournament.rebuy_value + (rebuy_staff ? tournament.rebuy_value_staff : 0)))
-                                        } else {
-                                          toast.warn("Máximo de rebuys atingido")
-                                        }
-                                    }}><BiSolidPlusCircle /></button>
-                                    <span>{rebuy}</span>
-                                    <button onClick={() => {
-                                      if(rebuy > 0){
-                                        setRebuy(rebuy-1)
-                                        setValue(value - (tournament.rebuy_value + (rebuy_staff ? tournament.rebuy_value_staff : 0)))
-                                      }
-                                    }}><BiSolidMinusCircle /></button>
-                                  </div>
-                                  { tournament.enable_rebuy_staff && (
-                                    <div className='select' style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
-                                      <span>Staff {getValue(0)}</span>
-                                      <Switch style={{width: 15, padding: 0, borderRadius: 15, marginBottom: 0}} disabled={!rebuy} checked={rebuy_staff} onChange={() => {
-                                          if(rebuy_staff){
-                                            setValue(value-(tournament.rebuy_value_staff*rebuy))
-                                          } else {
-                                            setValue(value+(tournament.rebuy_value_staff*rebuy))
-                                          }
-                                          setRebuy_staff(!rebuy_staff)
-                                        }} 
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              { tournament.enable_rebuyDuplo && (
-                                <div className='amount'>
-                                  <p>Rebuy Duplo</p>
-                                  <span>{getValue(0)}</span>
-                                  <div className='row' style={{opacity: rebuy + (rebuyDuplo * 2) + (rebuyTriplo * 3) + 1 >= tournament.max_rebuy ?  0.5 : 1}}>
-                                  <button onClick={() => {
-                                    if(rebuy + (rebuyDuplo * 2) + (rebuyTriplo * 3) +2 <= tournament.max_rebuy){
-                                          setRebuyDuplo(rebuyDuplo+1)
-                                          setValue(value+(tournament.rebuyDuplo_value + (rebuyDuplo_staff ? tournament.rebuyDuplo_value_staff : 0)))
-                                        }else {
-                                          toast.warn("Máximo de rebuys atingido")
-                                        }
-                                    }}><BiSolidPlusCircle /></button>
-                                    <span>{rebuyDuplo}</span>
-                                  <button onClick={() => {
-                                    if(rebuyDuplo > 0){
-                                      setRebuyDuplo(rebuyDuplo-1)
-                                      setValue(value-(tournament.rebuyDuplo_value + (rebuyDuplo_staff ? tournament.rebuyDuplo_value_staff : 0)))
-                                    }
-                                  }}><BiSolidMinusCircle /></button>
-                                  </div>
-                                  { tournament.enable_rebuyDuplo_staff && (
-                                    <div className='select' style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
-                                      <span>Staff {getValue(0)}</span>
-                                      <Switch style={{width: 15, padding: 0, borderRadius: 15, marginBottom: 0}} disabled={!rebuyDuplo} checked={rebuyDuplo_staff} onChange={() => {
-                                          if(rebuyDuplo_staff){
-                                            setValue(value-(tournament.rebuyDuplo_value_staff*rebuyDuplo))
-                                          } else {
-                                            setValue(value+(tournament.rebuyDuplo_value_staff*rebuyDuplo))
-                                          }
-                                          setRebuyDuplo_staff(!rebuyDuplo_staff)
-                                        }} 
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              { tournament.enable_rebuyTriplo && (
-                                <div className='amount' style={{opacity: rebuy + (rebuyDuplo * 2) + (rebuyTriplo * 3) + 2 >= tournament.max_rebuy ?  0.5 : 1}}>
-                                  <p>Rebuy Triplo</p>
-                                  <span>{getValue(0)}</span>
-                                  <div className='row' >
-                                  <button onClick={() => {
-                                    if(rebuy + (rebuyDuplo * 2) + (rebuyTriplo * 3) + 3 <= tournament.max_rebuy){
-                                          setRebuyTriplo(rebuyTriplo+1)
-                                          setValue(value+(tournament.rebuyTriplo_value + (rebuyTriplo_staff ? tournament.rebuyTriplo_value_staff : 0)))
-                                        }else {
-                                          toast.warn("Máximo de rebuys atingido")
-                                        }
-                                    }}><BiSolidPlusCircle /></button>
-                                    <span>{rebuyTriplo}</span>
-                                  <button onClick={() => {
-                                    if(rebuyTriplo > 0){
-                                      setRebuyTriplo(rebuyTriplo-1)
-                                      setValue(value-(tournament.rebuyTriplo_value + (rebuyTriplo_staff ? tournament.rebuyTriplo_value_staff : 0)))
-                                    }
-                                  }}><BiSolidMinusCircle /></button>
-                                  </div>
-                                  { tournament.enable_rebuyTriplo_staff && (
-                                    <div className='select' style={{display: "flex", flexDirection: "column", alignItems: "center"}}>
-                                      <span>Staff {getValue(0)}</span>
-                                      <Switch style={{width: 15, padding: 0, borderRadius: 15, marginBottom: 0}} disabled={!rebuyTriplo} checked={rebuyTriplo_staff} onChange={() => {
-                                          if(rebuyTriplo_staff){
-                                            setValue(value-(tournament.rebuyTriplo_value_staff*rebuyTriplo))
-                                          } else {
-                                            setValue(value+(tournament.rebuyTriplo_value_staff*rebuyTriplo))
-                                          }
-                                          setRebuyTriplo_staff(!rebuyTriplo_staff)
-                                        }} 
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                              {(tournament.enable_rebuyDuplo || tournament.enable_rebuy || tournament.enable_rebuyTriplo) && (<p style={{ width: "100%", textAlign: "center" }}>{rebuy + (rebuyDuplo * 2) +  (rebuyTriplo * 3)}/{tournament.max_rebuy} máx rebuys</p>)}
-                            </>
-                            ): (
-                                <>
-                                  {tournament.enable_rebuy && (
-                                    <Row>
-                                      <Button style={{ width: "100%" }} onClick={() => {
-                                          let valueUpdate = rebuy ?  value-tournament.rebuy_value :  value+tournament.rebuy_value
-                                          valueUpdate =  rebuy ? valueUpdate - (rebuy_staff ? tournament.rebuy_value_staff : 0) : valueUpdate + (rebuy_staff ? tournament.rebuy_value_staff : 0)
-                                          setValue(valueUpdate)
-                                          setRebuy(rebuy ?  0 : 1)
-                                          setRebuy_staff(false)
-                                        }} type={rebuy == 1 ? 'primary' : "default"}>
-                                        Reentrada{" " + getValue(0)}</Button>
-                                        {tournament.enable_rebuy_staff && (
-                                          <div className='select'>
-                                            <p>Staff {getValue(0)}</p>
-                                            <Switch style={{width: 20, padding: 0, borderRadius: 15, marginBottom: 0, marginLeft: 5}} disabled={!rebuy} checked={rebuy_staff} onChange={() => {
-                                                if(rebuy_staff){
-                                                  setValue(value-tournament.rebuy_value_staff)
-                                                } else {
-                                                  setValue(value+tournament.rebuy_value_staff)
-                                                }
-                                                setRebuy_staff(!rebuy_staff)
-                                              }} 
-                                          />
-                                        </div>
-                                      )}
-                                    </Row>
-                                  )}
-                                  {tournament.enable_rebuyDuplo && (
-                                    <Row>
-                                      <Button style={{ width: "100%" }} onClick={() => {
-                                            let valueUpdate = rebuyDuplo ?  value-tournament.rebuyDuplo_value :  value+tournament.rebuyDuplo_value
-                                            valueUpdate =  rebuyDuplo ? valueUpdate - (rebuyDuplo_staff ? tournament.rebuyDuplo_value_staff : 0) : valueUpdate + (rebuyDuplo_staff ? tournament.rebuyDuplo_value_staff : 0)
-                                            setValue(valueUpdate)
-                                        setRebuyDuplo(rebuyDuplo ? 0 : 1)
-                                        setRebuyDuplo_staff(false)
-                                      }} type={rebuyDuplo == 1 ? 'primary' : "default"}>
-                                      Reentrada Dupla{" " + getValue(tournament.rebuyDuplo_value)}</Button>
-                                        {tournament.enable_rebuyDuplo_staff && (
-                                          <div className='select'>
-                                            <p>Staff {getValue(0)}</p>
-                                            <Switch style={{width: 20, padding: 0, borderRadius: 15, marginBottom: 0, marginLeft: 5}} disabled={!rebuyDuplo} checked={rebuyDuplo_staff} onChange={() => {
-                                                if(rebuyDuplo_staff){
-                                                  setValue(value-tournament.rebuyDuplo_value_staff)
-                                                } else {
-                                                  setValue(value+tournament.rebuyDuplo_value_staff)
-                                                }
-                                                setRebuyDuplo_staff(!rebuyDuplo_staff)
-                                              }} 
-                                          />
-                                        </div>
-                                      )}
-                                    </Row>
-                                  )}
-                                  {tournament.enable_rebuyTriplo && (
-                                    <Row>
-                                      <Button style={{ width: "100%" }} onClick={() => {
-                                            let valueUpdate = rebuyTriplo ?  value-tournament.rebuyTriplo_value :  value+tournament.rebuyTriplo_value
-                                            valueUpdate =  rebuyTriplo ? valueUpdate - (rebuyTriplo_staff ? tournament.rebuyTriplo_value_staff : 0) : valueUpdate + (rebuyTriplo_staff ? tournament.rebuyTriplo_value_staff : 0)
-                                            setValue(valueUpdate)
-                                        setRebuyTriplo(rebuyTriplo ? 0 : 1)
-                                        setRebuyTriplo_staff(false)
-                                      }} type={rebuyTriplo == 1 ? 'primary' : "default"}>
-                                      Reentrada Tripla{" " + getValue(0)}</Button>
-                                        {tournament.enable_rebuyTriplo_staff && (
-                                          <div className='select'>
-                                            <p>Staff {getValue(0)}</p>
-                                            <Switch style={{width: 20, padding: 0, borderRadius: 15, marginBottom: 0, marginLeft: 5}} disabled={!rebuyTriplo} checked={rebuyTriplo_staff} onChange={() => {
-                                                if(rebuyTriplo_staff){
-                                                  setValue(value-tournament.rebuyTriplo_value_staff)
-                                                } else {
-                                                  setValue(value+tournament.rebuyTriplo_value_staff)
-                                                }
-                                                setRebuyTriplo_staff(!rebuyTriplo_staff)
-                                              }} 
-                                          />
-                                        </div>
-                                      )}
-                                    </Row>
-                                  )}
-                                </>
-                              )}
-                        */}
     </Container>
   );
 };

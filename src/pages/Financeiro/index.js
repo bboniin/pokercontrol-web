@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   MdAccountBalance,
   MdAdd,
+  MdEdit,
   MdMonetizationOn,
   MdVisibility,
 } from "react-icons/md";
@@ -40,6 +41,7 @@ dayjs.extend(localeData);
 
 import "moment/locale/pt-br";
 import locale from "antd/es/date-picker/locale/pt_BR";
+import { useNavigate } from "react-router-dom";
 
 const currencyConfig = {
   locale: "pt-BR",
@@ -53,6 +55,13 @@ const currencyConfig = {
       },
     },
   },
+};
+
+const typesTransaction = {
+  clube: true,
+  jackpot: true,
+  passport: true,
+  dealer: true,
 };
 
 const types = {
@@ -77,6 +86,7 @@ const types = {
 };
 
 const Financeiro = () => {
+  const navigate = useNavigate();
   const [club, setClub] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isOpenConfirm, setIsOpenConfirm] = useState(false);
@@ -86,12 +96,13 @@ const Financeiro = () => {
   const [observation, setObservation] = useState("");
   const [observationSearch, setObservationSearch] = useState("");
   const [typeNew, setTypeNew] = useState("clube");
+  const [typeNewOut, setTypeNewOut] = useState("clube");
   const [operation, setOperation] = useState("entrada");
   const [isLoadingModal, setIsLoadingModal] = useState(false);
   const [transaction, setTransaction] = useState({});
   const [page, setPage] = useState(0);
   const [operationFilter, setOperationFilter] = useState("");
-  const [select, setSelect] = useState("club");
+  const [select, setSelect] = useState("");
   const [filterSelect, setFilterSelect] = useState({});
   const [filter, setFilter] = useState({});
   const [dateInitial, setDateInitial] = useState("");
@@ -104,13 +115,16 @@ const Financeiro = () => {
   const [clientTransaction, setClientTransaction] = useState("");
   const [nameClientTransaction, setNameClientTransaction] = useState("");
   const [isOpenTransaction, setIsOpenTransaction] = useState(false);
+  const [isOpenEdit, setIsOpenEdit] = useState(false);
   const [methods_transaction, setMethods_transaction] = useState([]);
   const [datePayment, setDatePayment] = useState("");
   const [getMethods, setGetMethods] = useState([]);
+  const [banks, setBanks] = useState([]);
 
   useEffect(() => {
     loadMethods();
     loadClients();
+    loadBanks();
   }, []);
 
   useEffect(() => {
@@ -188,6 +202,40 @@ const Financeiro = () => {
           toast.error("Erro Interno. verifique sua conexão e tente novamente");
         }
       });
+  }
+
+  async function loadBanks() {
+    setIsLoading(true);
+    await api
+      .get("/banks")
+      .then((response) => {
+        let banks = response.data;
+        banks.map((item) => {
+          item.label = item.name;
+          item.value = item.id;
+        });
+        setBanks(banks);
+      })
+      .catch(({ response }) => {
+        if (response) {
+          if (response.data) {
+            if (response.data.message) {
+              toast.warn(response.data.message);
+            } else {
+              toast.error(
+                "Erro Interno. verifique sua conexão e tente novamente"
+              );
+            }
+          } else {
+            toast.error(
+              "Erro Interno. verifique sua conexão e tente novamente"
+            );
+          }
+        } else {
+          toast.error("Erro Interno. verifique sua conexão e tente novamente");
+        }
+      });
+    setIsLoading(false);
   }
 
   async function loadFinanceiro(filter) {
@@ -419,12 +467,155 @@ const Financeiro = () => {
     setIsLoadingModal(false);
   }
 
+  async function transferClub() {
+    setIsLoadingModal(true);
+    if (!typeNew || !typeNewOut) {
+      toast.warn("Preencha todos os campos");
+    } else {
+      if (typeNew == typeNewOut) {
+        toast.warn("Transferencia não pode ser para mesmo caixa");
+        setIsLoadingModal(false);
+        return "";
+      }
+      if (!value) {
+        toast.warn("Insira o valor da transação");
+        setIsLoadingModal(false);
+        return "";
+      }
+      if (!!typesTransaction[typeNew] != !!typesTransaction[typeNewOut]) {
+        let methods_transactionC = methods_transaction.filter(
+          (item) => item.id != "Crédito"
+        );
+
+        if (methods_transactionC.length) {
+          if (
+            methods_transaction.filter((item) => !item.id || !item.value).length
+          ) {
+            toast.warn("Selecione o método de pagamento e o valor");
+            setIsLoadingModal(false);
+            return "";
+          }
+          if (
+            value !=
+            methods_transaction
+              .map((method) => method["value"])
+              .reduce((total, value) => total + value)
+          ) {
+            toast.warn("Valor restante tem que ser zerado");
+            setIsLoadingModal(false);
+            return "";
+          }
+        } else {
+          toast.warn("Selecione o método de pagamento");
+          setIsLoadingModal(false);
+          return "";
+        }
+      }
+
+      await api
+        .post("/transfer-club", {
+          value: value,
+          type: typeNew,
+          typeOut: typeNewOut,
+          value: value,
+          observation: observation,
+          methods_transaction: methods_transaction,
+        })
+        .then(() => {
+          loadFinanceiro();
+          toast.success("Transferencia cadastrada com sucesso");
+          setIsOpenNew(false);
+        })
+        .catch(({ response }) => {
+          if (response) {
+            if (response.data) {
+              if (response.data.message) {
+                toast.warn(response.data.message);
+              } else {
+                toast.error(
+                  "Erro Interno. verifique sua conexão e tente novamente"
+                );
+              }
+            } else {
+              toast.error(
+                "Erro Interno. verifique sua conexão e tente novamente"
+              );
+            }
+          } else {
+            toast.error(
+              "Erro Interno. verifique sua conexão e tente novamente"
+            );
+          }
+        });
+    }
+    setIsLoadingModal(false);
+  }
+
+  async function editTransaction() {
+    setIsLoadingModal(true);
+    if (!value) {
+      toast.warning("Preencha o valor da transação");
+    } else {
+      await api
+        .put(`/transaction/${transaction.id}`, {
+          value: value,
+          observation: observation,
+        })
+        .then((response) => {
+          toast.success("Transação editada com sucesso");
+          setIsOpenEdit(false);
+          loadFinanceiro();
+        })
+        .catch(({ response }) => {
+          if (response) {
+            if (response.data) {
+              if (response.data.message) {
+                toast.warn(response.data.message);
+              } else {
+                toast.error(
+                  "Erro Interno. verifique sua conexão e tente novamente"
+                );
+              }
+            } else {
+              toast.error(
+                "Erro Interno. verifique sua conexão e tente novamente"
+              );
+            }
+          } else {
+            toast.error(
+              "Erro Interno. verifique sua conexão e tente novamente"
+            );
+          }
+        });
+    }
+    setIsLoadingModal(false);
+  }
+
+  console.log(!!typesTransaction[typeNew], !!typesTransaction[typeNewOut]);
   return (
     <Container>
       <Title>
         <h2>Financeiro</h2>
-        <div>
-          {!isLoading && club && (
+        {!isLoading && club && (
+          <div>
+            <Button
+              type="primary"
+              onClick={() => {
+                navigate("/despesas");
+              }}
+            >
+              <MdMonetizationOn size="20" color="#fff" />
+              <span>Despesas Recorrentes</span>
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                navigate("/contas");
+              }}
+            >
+              <MdAccountBalance size="20" color="#fff" />
+              <span>Contas</span>
+            </Button>
             <Button
               type="primary"
               onClick={() => {
@@ -441,8 +632,8 @@ const Financeiro = () => {
               <MdAdd size="20" color="#fff" />
               <span>Movimentação Financeira</span>
             </Button>
-          )}
-        </div>
+          </div>
+        )}
       </Title>
 
       {!isLoading && club && (
@@ -551,6 +742,10 @@ const Financeiro = () => {
               </div>
             </Card>
           </Cards>
+        </>
+      )}
+      {!isLoading && club && select && (
+        <>
           <Filters>
             <SearchBar>
               <DateInputBox>
@@ -737,7 +932,24 @@ const Financeiro = () => {
                       filter["operation"] = operationFilter;
                     }
                     if (observationSearch) {
-                      filter["observation"] = { contains: observationSearch };
+                      filter["OR"] = [
+                        {
+                          items_transaction: {
+                            some: {
+                              name: {
+                                contains: observationSearch,
+                                mode: "insensitive",
+                              },
+                            },
+                          },
+                        },
+                        {
+                          observation: {
+                            contains: observationSearch,
+                            mode: "insensitive",
+                          },
+                        },
+                      ];
                     }
                     filter["AND"] = [];
                     if (dateInitial) {
@@ -850,6 +1062,19 @@ const Financeiro = () => {
                             onClick={() => {
                               setTransaction(transaction);
                               setIsOpenConfirm(true);
+                              setObservation(transaction.observation);
+                            }}
+                            style={{ cursor: "pointer", marginLeft: 5 }}
+                            size={18}
+                            color={"#001B22"}
+                          />
+                        )}
+                        {!transaction.value_paid && transaction.editable && (
+                          <MdEdit
+                            onClick={() => {
+                              setTransaction(transaction);
+                              setIsOpenEdit(true);
+                              setValue(transaction.value);
                               setObservation(transaction.observation);
                             }}
                             style={{ cursor: "pointer", marginLeft: 5 }}
@@ -1017,7 +1242,11 @@ const Financeiro = () => {
         okText="CONFIRMAR PAGAMENTO"
         cancelText="FECHAR"
         onOk={() => {
-          createTransaction();
+          if (operation == "transferencia") {
+            transferClub();
+          } else {
+            createTransaction();
+          }
         }}
         onCancel={() => {
           setIsOpenNew(false);
@@ -1031,31 +1260,6 @@ const Financeiro = () => {
             marginBottom: 25,
           }}
         >
-          <ViewInput>
-            <p>Nome da Cobrança</p>
-            <Input
-              style={{
-                width: "100%",
-                backgroundColor: "#FFF",
-                borderWidth: 0,
-                color: "#001B22",
-                padding: "8px",
-                height: 35,
-                fontSize: 14,
-                borderWidth: 1,
-                borderColor: "#ccc",
-                borderStyle: "solid",
-                borderRadius: 2,
-                fontWeight: "400",
-                paddingLeft: 12,
-              }}
-              placeholder="digite o nome da cobrança"
-              value={name}
-              onChange={(text) => {
-                setName(text.target.value);
-              }}
-            />
-          </ViewInput>
           <ViewInput>
             <p>Tipo de Cobrança</p>
             <Select
@@ -1071,59 +1275,113 @@ const Financeiro = () => {
               options={[
                 { value: "entrada", label: "Entrada" },
                 { value: "saida", label: "Saida" },
+                { value: "transferencia", label: "Transferencia" },
               ]}
               value={operation}
-              onChange={(operation) => {
-                setOperation(operation);
+              onChange={(operationChange) => {
+                if (operationChange == "transferencia") {
+                  setTypeNew(null);
+                  setTypeNewOut(null);
+                  setValue("");
+                  setObservation("");
+                } else {
+                  if (operation == "transferencia") {
+                    setClientTransaction(null);
+                    setTypeNew("clube");
+                    setName("");
+                    setObservation("");
+                    setNameClientTransaction("");
+                    setValue("");
+                  }
+                }
+                setOperation(operationChange);
               }}
             />
           </ViewInput>
-
-          <ViewInput>
-            <p>Selecionar Cliente</p>
-            <AutoComplete
-              style={{
-                width: "100%",
-                height: 38,
-                borderRadius: 2,
-              }}
-              options={clientsTransaction}
-              value={clientTransaction ? clientTransaction.name : nameClientTransaction}
-              notFoundContent={<>Nenhum cliente encontrado</>}
-              onSelect={(text, client) => {
-                setClientTransaction(client);
-                setTypeNew("clube");
-                setMethods_transaction([]);
-              }}
-              onSearch={(text) => {
-                if (clientTransaction) {
-                  if (
-                    text.toUpperCase() != clientTransaction.name.toUpperCase()
-                  ) {
-                    setClientTransaction("");
-                    setMethods_transaction([]);
-                  }
-                }
-                setNameClientTransaction(text);
-                setClientsTransaction(
-                  clientsC.filter((item) => {
-                    return (
-                      String(item.name)
-                        .toUpperCase()
-                        .indexOf(text.toUpperCase()) != -1
-                    );
-                  })
-                );
-              }}
-              placeholder="procurar por nome"
-            >
+          {operation != "transferencia" && (
+            <ViewInput>
+              <p>Nome da Cobrança</p>
               <Input
-                style={{ width: "100%", borderRadius: 2, paddingLeft: 8 }}
+                style={{
+                  width: "100%",
+                  backgroundColor: "#FFF",
+                  borderWidth: 0,
+                  color: "#001B22",
+                  padding: "8px",
+                  height: 35,
+                  fontSize: 14,
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                  borderStyle: "solid",
+                  borderRadius: 2,
+                  fontWeight: "400",
+                  paddingLeft: 12,
+                }}
+                placeholder="digite o nome da cobrança"
+                value={name}
+                onChange={(text) => {
+                  setName(text.target.value);
+                }}
               />
-            </AutoComplete>
-          </ViewInput>
+            </ViewInput>
+          )}
+          {operation != "transferencia" && (
+            <ViewInput>
+              <p>Selecionar Cliente</p>
+              <AutoComplete
+                style={{
+                  width: "100%",
+                  backgroundColor: "#FFF",
+                  borderWidth: 0,
+                  color: "#001B22",
+                  fontSize: 14,
+                  borderRadius: 2,
+                  fontWeight: "400",
+                }}
+                options={clientsTransaction}
+                value={
+                  clientTransaction
+                    ? clientTransaction.name
+                    : nameClientTransaction
+                }
+                notFoundContent={<>Nenhum cliente encontrado</>}
+                onSelect={(text, client) => {
+                  setClientTransaction(client);
+                  setTypeNew("clube");
+                  setMethods_transaction([]);
+                }}
+                onSearch={(text) => {
+                  if (clientTransaction) {
+                    if (
+                      text.toUpperCase() != clientTransaction.name.toUpperCase()
+                    ) {
+                      setClientTransaction("");
+                      setMethods_transaction([]);
+                    }
+                  }
+                  setNameClientTransaction(text);
+                  setClientsTransaction(
+                    clientsC.filter((item) => {
+                      return (
+                        String(item.name)
+                          .toUpperCase()
+                          .indexOf(text.toUpperCase()) != -1
+                      );
+                    })
+                  );
+                }}
+                placeholder="procurar por nome"
+              >
+                <Input
+                  style={{ width: "100%", borderRadius: 2, paddingLeft: 8 }}
+                />
+              </AutoComplete>
+            </ViewInput>
+          )}
           <ViewInput>
-            <p>Caixa</p>
+            <p>
+              {operation == "transferencia" ? "Caixa para retirar" : "Caixa"}
+            </p>
             <Select
               style={{
                 width: "100%",
@@ -1134,16 +1392,44 @@ const Financeiro = () => {
                 borderRadius: 2,
                 fontWeight: "400",
               }}
+              placeholder="selecionar caixa"
               options={[
                 { value: "clube", label: "Clube" },
                 { value: "dealer", label: "Dealer" },
                 { value: "passport", label: "Passport" },
                 { value: "jackpot", label: "Jackpot" },
+                ...(operation == "transferencia" ? banks : []),
               ]}
               value={typeNew}
               onChange={(type) => setTypeNew(type)}
             />
           </ViewInput>
+          {operation == "transferencia" && (
+            <ViewInput>
+              <p>Caixa para receber</p>
+              <Select
+                style={{
+                  width: "100%",
+                  backgroundColor: "#FFF",
+                  borderWidth: 0,
+                  color: "#001B22",
+                  fontSize: 14,
+                  borderRadius: 2,
+                  fontWeight: "400",
+                }}
+                placeholder="selecionar caixa"
+                options={[
+                  { value: "clube", label: "Clube" },
+                  { value: "dealer", label: "Dealer" },
+                  { value: "passport", label: "Passport" },
+                  { value: "jackpot", label: "Jackpot" },
+                  ...(operation == "transferencia" ? banks : []),
+                ]}
+                value={typeNewOut}
+                onChange={(type) => setTypeNewOut(type)}
+              />
+            </ViewInput>
+          )}
           <ViewInput>
             <p>Valor da Transação</p>
             <IntlCurrencyInput
@@ -1170,70 +1456,163 @@ const Financeiro = () => {
               value={value}
             />
           </ViewInput>
-          <ViewInput style={{ textAlign: "left" }}>
-            <p>Métodos de pagamento</p>
-            <MethodsPayment
-              getMethods={getMethods}
-              operation={operation}
-              debt={
-                operation == "saida"
-                  ? clientTransaction
-                    ? clientTransaction.debt
+          {operation != "transferencia" ||
+          (operation == "transferencia" &&
+            !!typesTransaction[typeNew] != !!typesTransaction[typeNewOut] &&
+            typeNewOut &&
+            typeNew) ? (
+            <ViewInput style={{ textAlign: "left" }}>
+              <p>Métodos de pagamento</p>
+              <MethodsPayment
+                getMethods={getMethods}
+                operation={operation}
+                debt={
+                  operation == "saida"
+                    ? clientTransaction
+                      ? clientTransaction.debt
+                      : 0
                     : 0
-                  : 0
-              }
-              receive={
-                operation == "entrada"
-                  ? clientTransaction
-                    ? clientTransaction.receive
-                    : 0
-                  : 0
-              }
-              methodsPayment={methods_transaction}
-              value={value}
-              onType={(index, item) => {
-                let methods_transactionC = [...methods_transaction];
-                if (
-                  methods_transactionC.filter((data) => {
-                    return data.id == item.id;
-                  }).length
-                ) {
-                  toast.warn("Método de pagamento já selecionado");
-                } else {
-                  item.value = methods_transactionC[index].value;
-                  methods_transactionC[index] = item;
-                  setMethods_transaction(methods_transactionC);
                 }
+                receive={
+                  operation == "entrada"
+                    ? clientTransaction
+                      ? clientTransaction.receive
+                      : 0
+                    : 0
+                }
+                methodsPayment={methods_transaction}
+                value={value}
+                onType={(index, item) => {
+                  let methods_transactionC = [...methods_transaction];
+                  if (
+                    methods_transactionC.filter((data) => {
+                      return data.id == item.id;
+                    }).length
+                  ) {
+                    toast.warn("Método de pagamento já selecionado");
+                  } else {
+                    item.value = methods_transactionC[index].value;
+                    methods_transactionC[index] = item;
+                    setMethods_transaction(methods_transactionC);
+                  }
+                }}
+                onValue={(index, value) => {
+                  let methods_transactionC = [...methods_transaction];
+                  methods_transactionC[index].value = value;
+                  setMethods_transaction(methods_transactionC);
+                }}
+                addMethod={() => {
+                  let methods_transactionC = [...methods_transaction];
+                  methods_transactionC.push({
+                    name: "",
+                    value: 0,
+                    percentage: 0,
+                  });
+                  setMethods_transaction(methods_transactionC);
+                }}
+                observation={observation}
+                onObservation={(text) => {
+                  setObservation(text);
+                }}
+                datePayment={datePayment}
+                onDate={(date) => {
+                  setDatePayment(date);
+                }}
+                removeMethod={(index) => {
+                  setMethods_transaction(
+                    methods_transaction.filter((data, i) => {
+                      return i != index;
+                    })
+                  );
+                }}
+              />
+            </ViewInput>
+          ) : (
+            <ViewInput>
+              <p>Observação</p>
+              <Input.TextArea
+                style={{
+                  width: "100%",
+                  backgroundColor: "#FFF",
+                  borderWidth: 0,
+                  color: "#001B22",
+                  padding: "8px",
+                  height: 35,
+                  fontSize: 14,
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                  borderStyle: "solid",
+                  borderRadius: 2,
+                  fontWeight: "400",
+                  paddingLeft: 12,
+                }}
+                autoSize={{ maxRows: 4 }}
+                placeholder="deixe uma observação"
+                value={observation}
+                onChange={(text) => {
+                  setObservation(text.target.value);
+                }}
+              />
+            </ViewInput>
+          )}
+        </div>
+      </Modal>
+      <Modal
+        title="Editar Transação"
+        width={500}
+        confirmLoading={isLoadingModal}
+        open={isOpenEdit}
+        okText="EDITAR PAGAMENTO"
+        cancelText="FECHAR"
+        onOk={() => {
+          editTransaction();
+        }}
+        onCancel={() => {
+          setIsOpenEdit(false);
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            marginBottom: 25,
+          }}
+        >
+          <ViewInput>
+            <p>Valor da Transação</p>
+            <IntlCurrencyInput
+              onChange={(event, value) => {
+                setValue(value);
               }}
-              onValue={(index, value) => {
-                let methods_transactionC = [...methods_transaction];
-                methods_transactionC[index].value = value;
-                setMethods_transaction(methods_transactionC);
+              style={{
+                width: "100%",
+                backgroundColor: "#FFF",
+                borderWidth: 0,
+                color: "#001B22",
+                padding: "8px",
+                height: 35,
+                fontSize: 14,
+                borderWidth: 1,
+                borderColor: "#ccc",
+                borderStyle: "solid",
+                borderRadius: 2,
+                fontWeight: "400",
+                paddingLeft: 12,
               }}
-              addMethod={() => {
-                let methods_transactionC = [...methods_transaction];
-                methods_transactionC.push({
-                  name: "",
-                  value: 0,
-                  percentage: 0,
-                });
-                setMethods_transaction(methods_transactionC);
-              }}
-              observation={observation}
-              onObservation={(text) => {
-                setObservation(text);
-              }}
-              datePayment={datePayment}
-              onDate={(date) => {
-                setDatePayment(date);
-              }}
-              removeMethod={(index) => {
-                setMethods_transaction(
-                  methods_transaction.filter((data, i) => {
-                    return i != index;
-                  })
-                );
-              }}
+              currency="BRL"
+              config={currencyConfig}
+              value={value}
+            />
+          </ViewInput>
+
+          <ViewInput>
+            <p>Observação*</p>
+            <Input.TextArea
+              placeholder="observação"
+              value={observation}
+              style={{ minHeight: 60 }}
+              onChange={(event) => setObservation(event.target.value)}
             />
           </ViewInput>
         </div>

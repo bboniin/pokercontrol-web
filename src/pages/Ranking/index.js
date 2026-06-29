@@ -108,12 +108,12 @@ const Ranking = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -146,17 +146,17 @@ const Ranking = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -179,12 +179,12 @@ const Ranking = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -209,12 +209,12 @@ const Ranking = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -323,16 +323,21 @@ const Ranking = () => {
             {ranking.clients_points.length ? (
               <Table>
                 <tbody>
-                  {ranking.clients_points.map((client, index) => (
-                    <tr key={client.id}>
-                      <td>{index + 1}°</td>
-                      <td>{client.client.name}</td>
-                      <td>{client.points}</td>
-                      <td>
-                        {format(new Date(client.update_at), "dd/MM/yyyy HH:mm")}
-                      </td>
-                    </tr>
-                  ))}
+                  {ranking.clients_points
+                    .sort((a, b) => b.points - a.points)
+                    .map((client, index) => (
+                      <tr key={client.id}>
+                        <td>{index + 1}°</td>
+                        <td>{client.client.name}</td>
+                        <td>{client.points}</td>
+                        <td>
+                          {format(
+                            new Date(client.update_at),
+                            "dd/MM/yyyy HH:mm",
+                          )}
+                        </td>
+                      </tr>
+                    ))}
                 </tbody>
                 {ranking.clients_points.length != 0 && (
                   <thead>

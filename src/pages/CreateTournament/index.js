@@ -51,7 +51,9 @@ const CreateTournament = () => {
   const [purchases, setPurchases] = useState([]);
   const [vacancyEnable, setVacancyEnable] = useState(false);
   const [staffValue, setStaffValue] = useState(0);
+  const [blinds, setBlinds] = useState("");
   const [staffToken, setStaffToken] = useState(0);
+  const [errorModal, setErrorModal] = useState(false);
   const [visibleModal, setVisibleModal] = useState(0);
   const [position, setPosition] = useState(0);
   const [nivel_max_in, setNivel_max_in] = useState(0);
@@ -61,7 +63,6 @@ const CreateTournament = () => {
   const [rounds_to_interval, setRounds_to_interval] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingPage, setIsLoadingPage] = useState(true);
-  const [errorModal, setErrorModal] = useState(false);
   const [error, setError] = useState(false);
   const [visibleModalRanking, setVisibleModalRanking] = useState(false);
   const [rankings, setRankings] = useState([]);
@@ -76,7 +77,7 @@ const CreateTournament = () => {
         let vacancys = response.data;
         vacancys.map((item) => {
           item.label = item.name;
-          item.value = item.name;
+          item.value = item.id;
         });
         setVacancysSearch(vacancys);
       })
@@ -87,12 +88,12 @@ const CreateTournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -107,7 +108,6 @@ const CreateTournament = () => {
     if (
       !name ||
       !chairs ||
-      !totalAward_guaranteed ||
       !timer_round ||
       !timer_interval ||
       !rounds_to_interval ||
@@ -121,7 +121,7 @@ const CreateTournament = () => {
     } else {
       if (vacancyEnable) {
         const hasEmptyFields = vacancys.some(
-          (vacancy) => !vacancy.name || !vacancy.value
+          (vacancy) => !vacancy.name || !vacancy.value,
         );
         if (hasEmptyFields) {
           toast.warning(`Preencha o valor e nome das vagas`);
@@ -132,8 +132,24 @@ const CreateTournament = () => {
       }
       if (rankingsTournament.length) {
         const hasError = rankingsTournament.some((item) => {
-          if (!item.value) {
+          if (!item.type) {
+            toast.warning(
+              `Selecione o tipo de premiação do ranking ${item.name}`,
+            );
+            setError(true);
+            setIsLoading(false);
+            return true;
+          }
+
+          if (!item.value && item.type == "value") {
             toast.warning(`Preencha o valor para o ranking ${item.name}`);
+            setError(true);
+            setIsLoading(false);
+            return true;
+          }
+
+          if (!item.percentage && item.type == "percentage") {
+            toast.warning(`Preencha o percentual para o ranking ${item.name}`);
             setError(true);
             setIsLoading(false);
             return true;
@@ -142,7 +158,7 @@ const CreateTournament = () => {
           return item.rules.some((data, idx) => {
             if (!data.max || !data.points) {
               toast.warning(
-                `Preencha todos os campos das faixas de pontuação do ranking ${item.name}`
+                `Preencha todos os campos das faixas de pontuação do ranking ${item.name}`,
               );
               setError(true);
               setIsLoading(false);
@@ -152,7 +168,7 @@ const CreateTournament = () => {
               toast.warning(
                 `Faixa de pontuação do ranking ${
                   item.name
-                }, verifique a linha ${idx + 1}`
+                }, verifique a linha ${idx + 1}`,
               );
               setError(true);
               setIsLoading(false);
@@ -180,6 +196,7 @@ const CreateTournament = () => {
           percentage_players_award: parseFloat(percentage_players_award),
           purchases: purchases,
           vacancys: vacancys,
+          blinds: blinds,
           rankings: rankingsTournament,
         })
         .then((response) => {
@@ -193,17 +210,17 @@ const CreateTournament = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -215,7 +232,7 @@ const CreateTournament = () => {
       .get(`/rankings?all=true`)
       .then((response) => {
         const rankigs = response.data.rankings.filter(
-          (item) => item.status == "andamento"
+          (item) => item.status == "andamento",
         );
         rankigs.map((item) => {
           item.value = item.id;
@@ -230,12 +247,12 @@ const CreateTournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -260,6 +277,16 @@ const CreateTournament = () => {
         setNivel_max_timechip(tournament.max_timechip);
         setPercentage_players_award(tournament.percentage_players_award);
         setPurchases(tournament.purchases);
+        setBlinds(tournament.blinds);
+        let intervals = tournament.intervals.split("-");
+        const timerNivel = intervals.find((item) => item.includes("N"));
+        setTimer_round(parseInt(timerNivel.replace("N", "")));
+        const timerInterval = intervals.find((item) => item.includes("I"));
+        setTimer_interval(parseInt(timerInterval.replace("I", "")));
+        const roundsInterval = intervals.findIndex((item) =>
+          item.includes("I"),
+        );
+        setRounds_to_interval(roundsInterval);
         setVacancyEnable(!!tournament.vacancys.length);
         setVacancys(tournament.vacancys);
       })
@@ -270,12 +297,12 @@ const CreateTournament = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -288,7 +315,6 @@ const CreateTournament = () => {
     if (
       !namePurchase ||
       !cashierPurchase ||
-      !valuePurchase ||
       (typePurchase != "service" && !tokenPurchase) ||
       (isStaff && !staffToken)
     ) {
@@ -398,7 +424,7 @@ const CreateTournament = () => {
                           size={18}
                           onClick={() => {
                             setPurchases(
-                              purchases.filter((item, idx) => idx != index)
+                              purchases.filter((item, idx) => idx != index),
                             );
                           }}
                         />
@@ -471,7 +497,7 @@ const CreateTournament = () => {
                           size={18}
                           onClick={() => {
                             setPurchases(
-                              purchases.filter((item, idx) => idx != index)
+                              purchases.filter((item, idx) => idx != index),
                             );
                           }}
                         />
@@ -528,7 +554,7 @@ const CreateTournament = () => {
                           size={18}
                           onClick={() => {
                             setPurchases(
-                              purchases.filter((item, idx) => idx != index)
+                              purchases.filter((item, idx) => idx != index),
                             );
                           }}
                         />
@@ -597,7 +623,7 @@ const CreateTournament = () => {
                   <MdDelete
                     onClick={() => {
                       setRankingsTournament(
-                        rankingsTournament.filter((data) => item.id != data.id)
+                        rankingsTournament.filter((data) => item.id != data.id),
                       );
                     }}
                   />
@@ -786,8 +812,7 @@ const CreateTournament = () => {
                   fontSize: 14,
                   height: 32,
                   borderWidth: 1,
-                  borderColor:
-                    error && !totalAward_guaranteed ? "#ff4d4f" : "#ccc",
+                  borderColor: "#ccc",
                   borderStyle: "solid",
                   borderRadius: 2,
                   fontWeight: "400",
@@ -1001,8 +1026,7 @@ const CreateTournament = () => {
                   fontSize: 14,
                   height: 32,
                   borderWidth: 1,
-                  borderColor:
-                    errorModal && !valuePurchase ? "#ff4d4f" : "#ccc",
+                  borderColor: "#ccc",
                   borderStyle: "solid",
                   borderRadius: 2,
                   fontWeight: "400",
@@ -1034,7 +1058,7 @@ const CreateTournament = () => {
               />
             </ViewInput>
           )}
-          {(typePurchase != "service" && isStaff) && (
+          {typePurchase != "service" && isStaff && (
             <>
               <div
                 style={{ display: "flex", flexDirection: "row", width: "100%" }}
@@ -1106,38 +1130,108 @@ const CreateTournament = () => {
             marginBottom: 25,
           }}
         >
-          <ViewInput style={{ width: "100%" }}>
-            <p>Valor para o Ranking</p>
-            <IntlCurrencyInput
-              style={{
-                width: "100%",
-                backgroundColor: "#FFF",
-                borderWidth: 0,
-                color: "#001B22",
-                padding: "8px",
-                fontSize: 14,
-                height: 32,
-                borderWidth: 1,
-                borderColor: "#ccc",
-                borderStyle: "solid",
-                borderRadius: 2,
-                fontWeight: "400",
-                paddingLeft: 12,
-              }}
-              currency="BRL"
-              config={currencyConfig}
-              value={rankingsTournament[indexRanking]?.value}
-              onChange={(event, value) => {
-                let rankigsEdit = [...rankingsTournament];
-                let rankigEdit = {
-                  ...rankingsTournament[indexRanking],
-                };
-                rankigEdit.value = value;
-                rankigsEdit[indexRanking] = { ...rankigEdit };
-                setRankingsTournament(rankigsEdit);
-              }}
-            />
+          <ViewInput>
+            <p>Selecione tipo de premiação*</p>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <Button
+                style={{ width: "49%" }}
+                type={
+                  rankingsTournament[indexRanking]?.type == "value" && "primary"
+                }
+                onClick={() => {
+                  let rankigsEdit = [...rankingsTournament];
+                  let rankigEdit = {
+                    ...rankingsTournament[indexRanking],
+                  };
+                  rankigEdit.type = "value";
+                  rankigsEdit[indexRanking] = { ...rankigEdit };
+                  setRankingsTournament(rankigsEdit);
+                }}
+              >
+                Valor Fixo
+              </Button>
+              <Button
+                style={{ width: "49%" }}
+                type={
+                  rankingsTournament[indexRanking]?.type == "percentage" &&
+                  "primary"
+                }
+                onClick={() => {
+                  let rankigsEdit = [...rankingsTournament];
+                  let rankigEdit = {
+                    ...rankingsTournament[indexRanking],
+                  };
+                  rankigEdit.type = "percentage";
+                  rankigsEdit[indexRanking] = { ...rankigEdit };
+                  setRankingsTournament(rankigsEdit);
+                }}
+              >
+                Porcentagem
+              </Button>
+            </div>
           </ViewInput>
+          {rankingsTournament[indexRanking]?.type == "value" && (
+            <ViewInput style={{ width: "100%" }}>
+              <p>Valor para o Ranking</p>
+              <IntlCurrencyInput
+                style={{
+                  width: "100%",
+                  backgroundColor: "#FFF",
+                  borderWidth: 0,
+                  color: "#001B22",
+                  padding: "8px",
+                  fontSize: 14,
+                  height: 32,
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                  borderStyle: "solid",
+                  borderRadius: 2,
+                  fontWeight: "400",
+                  paddingLeft: 12,
+                }}
+                currency="BRL"
+                config={currencyConfig}
+                value={rankingsTournament[indexRanking]?.value}
+                onChange={(event, value) => {
+                  let rankigsEdit = [...rankingsTournament];
+                  let rankigEdit = {
+                    ...rankingsTournament[indexRanking],
+                  };
+                  rankigEdit.value = value;
+                  rankigsEdit[indexRanking] = { ...rankigEdit };
+                  setRankingsTournament(rankigsEdit);
+                }}
+              />
+            </ViewInput>
+          )}
+          {rankingsTournament[indexRanking]?.type == "percentage" && (
+            <ViewInput style={{ width: "100%" }}>
+              <p>Porcentagem do Valor Acumulado</p>
+
+              <Input
+                placeholder="0 a 100%"
+                value={rankingsTournament[indexRanking]?.percentage || ""}
+                type="number"
+                min={0}
+                max={100}
+                formatter={(value) => `${value}%`}
+                onChange={(event) => {
+                  let value = parseFloat(event.target.value) || 0;
+                  if (value >= 0 && value <= 100) {
+                    let rankigsEdit = [...rankingsTournament];
+                    let rankigEdit = {
+                      ...rankingsTournament[indexRanking],
+                    };
+                    rankigEdit.percentage = value;
+                    rankigsEdit[indexRanking] = { ...rankigEdit };
+                    setRankingsTournament(rankigsEdit);
+                  } else {
+                    toast.warn("Valores da porcentagem é de 0 a 100%");
+                  }
+                }}
+              />
+            </ViewInput>
+          )}
           <ViewInput style={{ width: "100%" }}>
             <h4 style={{ textAlign: "left" }}>Faixas de Pontuação</h4>
             <div>

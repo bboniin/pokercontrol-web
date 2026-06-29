@@ -80,6 +80,34 @@ function Sidebar({ isMenuMinimized, onChange }) {
             </Link>
           </li>
         )}
+        {(isAdmin || isCaixa) && (
+          <>
+            <li>
+              <Link
+                onClick={() => {
+                  onChange(false);
+                }}
+                to="/caixa"
+              >
+                <MdAccountBalance size={22} color="#fff" />
+                <span>Caixa Atual</span>
+              </Link>
+            </li>
+            <li>
+              <Link
+                onClick={() => {
+                  onChange(false);
+                }}
+                to="/caixas"
+              >
+                <MdAccountBalance size={22} color="#fff" />
+                <span>
+                  {user.type == "admin" ? "Caixas do Clube" : "Meus Caixas"}
+                </span>
+              </Link>
+            </li>
+          </>
+        )}
         {isAdmin && (
           <li>
             <Link

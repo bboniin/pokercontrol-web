@@ -230,10 +230,10 @@ const MethodsPayment = ({
             value={datePayment ? dayjs(datePayment) : ""}
             style={{
               minWidth: "100%",
-              height: 38,
+              height: 35,
               display: "flex",
               alignItems: "center",
-              borderRadius: 8,
+              borderRadius: 2,
             }}
             onChange={(date) => onDate(date)}
           />
@@ -245,14 +245,21 @@ const MethodsPayment = ({
         <TextArea
           placeholder="deixe uma observação"
           value={observation}
-          autoSize={{ maxRows: 2 }}
+          autoSize={{ maxRows: 4 }}
           style={{
-            minWidth: "100%",
-            minHeight: 38,
-            display: "flex",
-            alignItems: "center",
-            borderRadius: 8,
-            paddingTop: 7,
+            width: "100%",
+            backgroundColor: "#FFF",
+            borderWidth: 0,
+            color: "#001B22",
+            padding: "8px",
+            height: 35,
+            fontSize: 14,
+            borderWidth: 1,
+            borderColor: "#ccc",
+            borderStyle: "solid",
+            borderRadius: 2,
+            fontWeight: "400",
+            paddingLeft: 12,
           }}
           onChange={(text) => onObservation(text.target.value)}
         />

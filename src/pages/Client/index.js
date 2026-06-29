@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Container,
@@ -22,6 +22,11 @@ import IntlCurrencyInput from "react-intl-currency-input";
 import api from "../../services/api";
 import MethodsPayment from "../../components/MethodsPayment";
 import { getValue } from "../../services/functions";
+import { useReactToPrint } from "react-to-print";
+import logo from "../../assets/logo.png";
+import { TablePrint } from "../ViewComanda/styles";
+import logoPablo from "../../assets/logoPablo.png";
+import { useAuth } from "../../hooks/AuthContext";
 
 const currencyConfig = {
   locale: "pt-BR",
@@ -37,29 +42,13 @@ const currencyConfig = {
   },
 };
 
-const types = {
-  cash: "Cash",
-  bar: "Bar",
-  vaga: "Vaga",
-  dealer: "Dealer",
-  jackpot: "Jackpot",
-  passport: "Passport",
-  torneio: "Torneio",
-  "torneio-buyin": "Torneio (Buyin)",
-  "torneio-rebuy": "Torneio (Rebuy)",
-  "torneio-rebuy-duplo": "Torneio (Rebuy Duplo)",
-  "torneio-rebuy-triplo": "Torneio (Rebuy Triplo)",
-  "torneio-add-on": "Torneio (ADD ON)",
-  "torneio-super-add-on": "Torneio (Super ADD ON)",
-  "torneio-buyin-staff": "Torneio (Buyin) Staff",
-  "torneio-rebuy-staff": "Torneio (Rebuy) Staff",
-  "torneio-rebuy-duplo-staff": "Torneio (Rebuy Duplo) Staff",
-  "torneio-rebuy-triplo-staff": "Torneio (Rebuy Triplo) Staff",
-  "torneio-add-on-staff": "Torneio (ADD ON) Staff",
-  "torneio-super-add-on-staff": "Torneio (Super ADD ON) Staff",
-};
-
 const Client = () => {
+  const { user } = useAuth();
+  const componentRef = useRef();
+  const handlePrint = useReactToPrint({
+    content: () => componentRef.current,
+  });
+
   const [isLoading, setIsLoading] = useState(true);
   const [isOpenConfirm, setIsOpenConfirm] = useState(false);
   const [isLoadingModal, setIsLoadingModal] = useState(false);
@@ -68,7 +57,9 @@ const Client = () => {
   const [transactions, setTransactions] = useState(0);
   const [transactionsPending, setTransactionsPending] = useState([]);
   const [valueTotal, setValueTotal] = useState(0);
-  const [valueTotalComand, setValueTotalComand] = useState(0);
+  const [methods_transactionPrint, setMethods_transactionPrint] = useState([]);
+  const [transactionsPrint, setTransactionsPrint] = useState([]);
+  const [isOpenCommand, setIsOpenCommand] = useState(false);
   const { id } = useParams();
   const [client, setClient] = useState({});
   const [methods_transaction, setMethods_transaction] = useState([]);
@@ -82,6 +73,7 @@ const Client = () => {
   const [address, setAddress] = useState("");
   const [phone_number, setPhone_number] = useState("");
   const [credit, setCredit] = useState(0);
+  const [value, setValue] = useState(0);
   const [photo, setPhoto] = useState("");
   const [isOpenEdit, setIsOpenEdit] = useState(false);
   const [isOpenPay, setIsOpenPay] = useState(false);
@@ -104,12 +96,12 @@ const Client = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -130,12 +122,12 @@ const Client = () => {
           if (response.data) {
             if (!response.data.message) {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -174,12 +166,12 @@ const Client = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -232,17 +224,17 @@ const Client = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -252,7 +244,7 @@ const Client = () => {
 
   async function confirmTransaction() {
     let methods_transactionC = methods_transaction.filter(
-      (item) => item.id != "Crédito"
+      (item) => item.id != "Crédito",
     );
 
     if (methods_transactionC.length) {
@@ -304,6 +296,9 @@ const Client = () => {
       return "";
     }
 
+    setMethods_transactionPrint(methods_transactionC);
+    console.log(methods_transactionC);
+
     await api
       .put(`/confirmed-transaction/${transaction.id}`, {
         methods_transaction: methods_transactionC,
@@ -313,7 +308,10 @@ const Client = () => {
       .then(() => {
         loadClient();
         toast.success("Pagamento realizado com sucesso");
-        setIsOpenConfirm();
+        setTransactionsPrint([transaction]);
+        setValue(transaction.value - transaction.value_paid);
+        setIsOpenCommand(true);
+        setIsOpenConfirm(false);
       })
       .catch(({ response }) => {
         if (response) {
@@ -322,12 +320,12 @@ const Client = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -338,7 +336,7 @@ const Client = () => {
 
   async function payTransactions() {
     let methods_transactionC = methods_transaction.filter(
-      (item) => item.id != "Crédito"
+      (item) => item.id != "Crédito",
     );
 
     if (methods_transactionC.length) {
@@ -366,6 +364,8 @@ const Client = () => {
       return "";
     }
 
+    setMethods_transactionPrint(methods_transactionC);
+
     await api
       .put(`/transactions-pending/${client.id}`, {
         methods_transaction: methods_transactionC,
@@ -375,7 +375,10 @@ const Client = () => {
       })
       .then(() => {
         loadClient();
+        setTransactionsPrint(transactionsPending);
         setIsOpenPay(false);
+        setValue(valueTotal);
+        setIsOpenCommand(true);
         toast.success("Pagamento realizado com sucesso");
       })
       .catch(({ response }) => {
@@ -385,12 +388,12 @@ const Client = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -416,7 +419,7 @@ const Client = () => {
       if (
         transactionsComand.reduce(
           (acc, item) => acc + (item.value - item.value_paid),
-          0
+          0,
         ) <
         methods_transaction
           .map((method) => method["value"])
@@ -429,7 +432,7 @@ const Client = () => {
         if (
           transactionsComand.reduce(
             (acc, item) => acc + (item.value - item.value_paid),
-            0
+            0,
           ) !=
           methods_transaction
             .map((method) => method["value"])
@@ -446,6 +449,8 @@ const Client = () => {
       return "";
     }
 
+    setMethods_transactionPrint(methods_transaction);
+
     await api
       .put(`/transactions-comand/${client.id}`, {
         methods_transaction: methods_transaction,
@@ -457,6 +462,14 @@ const Client = () => {
       .then(() => {
         loadClient();
         setIsOpenPayComand(false);
+        setTransactionsPrint(transactionsComand);
+        setValue(
+          transactionsComand.reduce(
+            (acc, item) => acc + (item.value - item.value_paid),
+            0,
+          ),
+        );
+        setIsOpenCommand(true);
         toast.success("Pagamento realizado com sucesso");
       })
       .catch(({ response }) => {
@@ -466,12 +479,12 @@ const Client = () => {
               toast.warn(response.data.message);
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         } else {
@@ -500,17 +513,17 @@ const Client = () => {
                 toast.warn(response.data.message);
               } else {
                 toast.error(
-                  "Erro Interno. verifique sua conexão e tente novamente"
+                  "Erro Interno. verifique sua conexão e tente novamente",
                 );
               }
             } else {
               toast.error(
-                "Erro Interno. verifique sua conexão e tente novamente"
+                "Erro Interno. verifique sua conexão e tente novamente",
               );
             }
           } else {
             toast.error(
-              "Erro Interno. verifique sua conexão e tente novamente"
+              "Erro Interno. verifique sua conexão e tente novamente",
             );
           }
         });
@@ -602,7 +615,7 @@ const Client = () => {
                 {client.cpf
                   ? client.cpf.replace(
                       /(\d{3})(\d{3})(\d{3})(\d{2})/,
-                      "$1.$2.$3-$4"
+                      "$1.$2.$3-$4",
                     )
                   : "Não cadastrado"}
               </h3>
@@ -611,7 +624,7 @@ const Client = () => {
                 {client.phone_number
                   ? client.phone_number.replace(
                       /(\d{2})(\d{5})(\d{4})/,
-                      "($1) $2-$3"
+                      "($1) $2-$3",
                     )
                   : "Não cadastrado"}
               </h3>
@@ -650,8 +663,8 @@ const Client = () => {
                     client.debt == client.receive
                       ? "#000"
                       : client.debt > client.receive
-                      ? "#d63211"
-                      : "#1eb019",
+                        ? "#d63211"
+                        : "#1eb019",
                 }}
               >
                 Saldo:{" "}
@@ -692,7 +705,7 @@ const Client = () => {
                           {item.rescue &&
                             `Resgatada dia ${format(
                               new Date(item.date_rescue),
-                              "dd/MM/yyyy HH:mm"
+                              "dd/MM/yyyy HH:mm",
                             )}`}
                         </p>
                         {!item.rescue && (
@@ -726,11 +739,13 @@ const Client = () => {
                 <tbody>
                   {client.transactions.map((transaction) => (
                     <tr key={transaction.id}>
-                      <td>
+                      <td style={{ textTransform: "capitalize" }}>
                         {transaction.items_transaction.map((item, index) => {
                           return index == 0
-                            ? types[item.name] || item.name
-                            : " , " + types[item.name] || item.name;
+                            ? item.name || ""
+                            : item.name
+                              ? " , " + item.name
+                              : "";
                         })}
                       </td>
                       <td
@@ -750,15 +765,15 @@ const Client = () => {
                         {transaction.paid
                           ? "Pago"
                           : transaction.value_paid
-                          ? `Falta pagar ${getValue(
-                              transaction.value - transaction.value_paid
-                            )}`
-                          : "Não Pago"}
+                            ? `Falta pagar ${getValue(
+                                transaction.value - transaction.value_paid,
+                              )}`
+                            : "Não Pago"}
                       </td>
                       <td>
                         {format(
                           new Date(transaction.create_at),
-                          "dd/MM/yyyy HH:mm"
+                          "dd/MM/yyyy HH:mm",
                         )}
                       </td>
                       <td
@@ -922,7 +937,7 @@ const Client = () => {
                 setMethods_transaction(
                   methods_transaction.filter((data, i) => {
                     return i != index;
-                  })
+                  }),
                 );
               }}
             />
@@ -1118,8 +1133,8 @@ const Client = () => {
               {transaction.paid
                 ? "Totalmente pago"
                 : transaction.value_paid
-                ? `Parcialmente pago ( ${getValue(transaction.value_paid)} )`
-                : "Não Pago"}
+                  ? `Parcialmente pago ( ${getValue(transaction.value_paid)} )`
+                  : "Não Pago"}
             </h4>
             <h4 style={{ marginBottom: 2 }}>
               {transaction.paid ? "Pago dia " : "Será paga dia"}{" "}
@@ -1230,7 +1245,7 @@ const Client = () => {
                 setMethods_transaction(
                   methods_transaction.filter((data, i) => {
                     return i != index;
-                  })
+                  }),
                 );
               }}
             />
@@ -1269,7 +1284,7 @@ const Client = () => {
         title="Fechar Comanda"
         width={500}
         confirmLoading={isLoadingModal}
-        open={isOpenPayComand}
+        open={isOpenPayComand && !isOpenCommand}
         okText="CONFIRMAR PAGAMENTO"
         cancelText="FECHAR"
         onOk={() => {
@@ -1311,11 +1326,13 @@ const Client = () => {
           )}
           {transactionsPending.map((transaction) => (
             <Transaction key={transaction.id}>
-              <p>
+              <p style={{ textTransform: "capitalize" }}>
                 {transaction.items_transaction.map((item, index) => {
                   return index == 0
-                    ? types[item.name] || item.name
-                    : " , " + types[item.name] || item.name;
+                    ? item.name || ""
+                    : item.name
+                      ? " , " + item.name
+                      : "";
                 })}
               </p>
               <p
@@ -1333,10 +1350,10 @@ const Client = () => {
                 {transaction.paid
                   ? "Pago"
                   : transaction.value_paid
-                  ? `Falta pagar ${getValue(
-                      transaction.value - transaction.value_paid
-                    )}`
-                  : "Não Pago"}
+                    ? `Falta pagar ${getValue(
+                        transaction.value - transaction.value_paid,
+                      )}`
+                    : "Não Pago"}
               </p>
               <p style={{ fontSize: 10 }}>
                 {format(new Date(transaction.create_at), "dd/MM/yyyy HH:mm")}
@@ -1350,17 +1367,17 @@ const Client = () => {
               >
                 <Checkbox
                   checked={transactionsComand.some(
-                    (item) => item.id === transaction.id
+                    (item) => item.id === transaction.id,
                   )}
                   onChange={() => {
                     let transactionsComandC = [...transactionsComand];
                     if (
                       transactionsComand.some(
-                        (item) => item.id === transaction.id
+                        (item) => item.id === transaction.id,
                       )
                     ) {
                       transactionsComandC = transactionsComandC.filter(
-                        (item) => item.id !== transaction.id
+                        (item) => item.id !== transaction.id,
                       );
                       setTransactionsComand(transactionsComandC);
                     } else {
@@ -1373,17 +1390,38 @@ const Client = () => {
             </Transaction>
           ))}
           Total a pagar:{" "}
-          <h3 style={{ fontWeight: "bold", color: "#d63211", marginBottom: 0 }}>
-            {(
-              transactionsComand.reduce(
-                (acc, item) => acc + (item.value - item.value_paid),
-                0
-              ) || 0
-            ).toLocaleString("pt-br", {
-              style: "currency",
-              currency: "BRL",
-            })}
-          </h3>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <h3
+              style={{ fontWeight: "bold", color: "#d63211", marginBottom: 0 }}
+            >
+              {(
+                transactionsComand.reduce(
+                  (acc, item) => acc + (item.value - item.value_paid),
+                  0,
+                ) || 0
+              ).toLocaleString("pt-br", {
+                style: "currency",
+                currency: "BRL",
+              })}
+            </h3>
+            <Button
+              type="primary"
+              style={{ marginTop: -10, height: 30 }}
+              onClick={() => {
+                setValue(
+                  transactionsComand.reduce(
+                    (acc, item) => acc + (item.value - item.value_paid),
+                    0,
+                  ) || 0,
+                );
+                setTransactionsPrint(transactionsComand);
+                setMethods_transactionPrint([]);
+                setIsOpenCommand(true);
+              }}
+            >
+              Imprimir Comanda
+            </Button>
+          </div>
           <ViewInput style={{ textAlign: "left", marginTop: 10 }}>
             <p>Métodos de pagamento</p>
             <MethodsPayment
@@ -1396,7 +1434,7 @@ const Client = () => {
               value={
                 transactionsComand.reduce(
                   (acc, item) => acc + (item.value - item.value_paid),
-                  0
+                  0,
                 ) || 0
               }
               onType={(index, item) => {
@@ -1439,11 +1477,109 @@ const Client = () => {
                 setMethods_transaction(
                   methods_transaction.filter((data, i) => {
                     return i != index;
-                  })
+                  }),
                 );
               }}
             />
           </ViewInput>
+        </div>
+      </Modal>
+      <Modal
+        title="Imprimir Comanda"
+        width={300}
+        open={isOpenCommand}
+        cancelText="FECHAR"
+        okText="IMPRIMIR"
+        maskClosable={false}
+        onOk={() => {
+          handlePrint();
+        }}
+        onCancel={() => {
+          setIsOpenCommand(false);
+        }}
+      >
+        <div
+          ref={componentRef}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            width: "100%",
+            alignItems: "center",
+            marginBottom: 25,
+            fontWeight: "bolder",
+            padding: "20px 15px",
+          }}
+        >
+          {user.name == "pablospoker" && (
+            <img
+              src={logoPablo}
+              alt=""
+              style={{ width: 180, marginBottom: 10 }}
+            />
+          )}
+
+          {user.name != "pablospoker" && (
+            <img
+              src={logo}
+              alt=""
+              style={{
+                width: 220,
+                position: "absolute",
+                top: "15%",
+                opacity: 0.28,
+              }}
+            />
+          )}
+          <p style={{ width: "100%" }}>Cliente: {client?.name}</p>
+          <p style={{ width: "100%", lineHeight: 2 }}>{client?.chair}</p>
+          <TablePrint>
+            <thead>
+              <tr>
+                <td>Compra</td>
+                <td style={{ textAlign: "center", width: 125 }}>Valor</td>
+                {<td style={{ textAlign: "center", width: 125 }}>A pagar</td>}
+              </tr>
+            </thead>
+            <tbody>
+              {transactionsPrint.map((item) => {
+                return (
+                  <tr>
+                    <td>Cash</td>
+                    <td style={{ textAlign: "center", width: 125 }}>
+                      {(item.value || 0).toLocaleString("pt-br", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </td>
+                    <td style={{ textAlign: "center", width: 125 }}>
+                      {(item.value - item.value_paid).toLocaleString("pt-br", {
+                        style: "currency",
+                        currency: "BRL",
+                      })}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </TablePrint>
+          {methods_transactionPrint.map((item) => {
+            return (
+              <p style={{ width: "100%", marginTop: 10 }}>
+                {item.name}:{" "}
+                {(item.value || 0).toLocaleString("pt-br", {
+                  style: "currency",
+                  currency: "BRL",
+                })}
+              </p>
+            );
+          })}
+          <h3 style={{ width: "100%", marginTop: 10 }}>
+            Total:{" "}
+            {value.toLocaleString("pt-br", {
+              style: "currency",
+              currency: "BRL",
+            })}
+          </h3>
         </div>
       </Modal>
     </Container>

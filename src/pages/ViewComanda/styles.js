@@ -226,11 +226,12 @@ export const TablePrint = styled.table`
   border-spacing: 0px;
 
   thead {
+    width: 100%;
     tr {
       td {
-        padding: 5px 15px;
+        padding: 5px;
         height: 35px;
-        font-size: 12px;
+        font-size: 13px;
         border-bottom-style: solid;
         border-bottom-width: 1px;
         border-bottom-color: #001b22;
@@ -246,9 +247,9 @@ export const TablePrint = styled.table`
     tr {
       td {
         color: #001b22;
-        font-size: 14px;
+        font-size: 12px;
         height: 35px;
-        padding: 5px 15px;
+        padding: 5px;
         border-bottom-style: solid;
         border-bottom-width: 1px;
         border-bottom-color: #001b22;
